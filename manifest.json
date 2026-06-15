@@ -1,0 +1,16 @@
+{
+  "name": "Just Sitting",
+  "short_name": "Zazen",
+  "display": "standalone",
+  "background_color": "#161109",
+  "theme_color": "#161109",
+  "orientation": "portrait",
+  "start_url": "./",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

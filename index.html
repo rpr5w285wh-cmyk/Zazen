@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>只管打坐 · Just Sitting</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zazen">
+<meta name="theme-color" content="#161109">
+<!-- Home-screen icon: a candlelit ensō on dark ground, inlined as SVG data URI -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' fill='%23161109'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%23f0a860' stroke-width='7' stroke-linecap='round' stroke-dasharray='300 40' transform='rotate(110 90 90)'/%3E%3C/svg%3E">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital@0;1&display=swap');
+
+  :root {
+    --bg: #20190f;
+    --bg-deep: #161109;
+    --ink: #fbf3e2;
+    --ink-dim: #cdbd9d;
+    --ink-faint: #97886c;
+    --ember: #f0a860;
+    --ember-soft: #d4884a;
+    --line: rgba(205, 189, 157, 0.22);
+    --glow: rgba(240, 168, 96, 0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--ink);
+    font-family: 'EB Garamond', Georgia, serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Candlelit atmosphere */
+  .atmosphere {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 42%, rgba(240,168,96,0.13), transparent 70%),
+      radial-gradient(ellipse 120% 100% at 50% 50%, var(--bg) 0%, var(--bg-deep) 88%);
+    z-index: 0;
+    pointer-events: none;
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 1; opacity: 0.035; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
+
+  /* ---- Screens ---- */
+  .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
+  .screen.active { display: flex; }
+  /* Settings can exceed the viewport (vow editor); let it scroll internally. */
+  #settings.active { max-height: calc(100dvh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---- Home ---- */
+  .title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.5em; font-size: 1.05rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 4px; padding-left: 0.5em; }
+  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3.4rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 38px; text-shadow: 0 0 40px var(--glow); }
+
+  .stat-line { color: var(--ink-faint); font-size: 0.95rem; font-style: italic; letter-spacing: 0.04em; margin-bottom: 40px; text-align: center; line-height: 1.7; min-height: 1.4em; }
+  .stat-line b { color: var(--ink-dim); font-style: normal; font-weight: 400; }
+
+  .stage-name { color: var(--ember); font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 6px; }
+  .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 36px; max-width: 320px; }
+
+  .plan { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 34px; color: var(--ink-faint); font-size: 0.82rem; letter-spacing: 0.08em; }
+  .plan .seg { color: var(--ink-dim); }
+  .plan .dot { color: var(--ink-faint); margin: 0 2px; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+  .begin {
+    border: 1px solid var(--ember-soft);
+    color: var(--ink);
+    padding: 16px 54px;
+    border-radius: 2px;
+    font-size: 0.95rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    background: rgba(217,139,74,0.05);
+    transition: all 0.5s ease;
+    margin-bottom: 26px;
+  }
+  .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
+
+  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 320px; }
+  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
+  .adjust button:hover { color: var(--ink-dim); }
+  .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
+
+  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
+  .ghost-link:hover { color: var(--ink-dim); }
+  .ghost-row { display: flex; gap: 24px; align-items: center; }
+  .test-banner { margin-top: 16px; color: var(--ember); font-size: 0.78rem; letter-spacing: 0.06em; font-style: italic; opacity: 0.9; text-align: center; max-width: 300px; }
+  .setting-block { width: 100%; max-width: 340px; margin-bottom: 30px; }
+  .toggle-row { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--ink-dim); font-size: 0.95rem; }
+  .tog-label { color: var(--ink-dim); font-size: 0.98rem; letter-spacing: 0.04em; }
+  .tog-state { color: var(--ink-faint); font-style: italic; letter-spacing: 0.1em; }
+  .toggle-row.on .tog-state { color: var(--ember); }
+  .setting-note { color: var(--ink-faint); font-size: 0.82rem; font-style: italic; line-height: 1.5; margin-top: 8px; }
+  #vowEditor textarea { width: 100%; background: rgba(205,189,157,0.05); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font-family: 'EB Garamond', serif; font-size: 0.95rem; font-style: italic; padding: 9px 11px; margin-bottom: 14px; resize: none; line-height: 1.4; }
+  .vow-field-label { color: var(--ink-faint); font-size: 0.78rem; font-style: italic; letter-spacing: 0.03em; margin-bottom: 5px; line-height: 1.4; }
+  #vowEditor textarea:focus { outline: none; border-color: var(--ember-soft); }
+  .vow-actions { display: flex; gap: 18px; margin-top: 6px; }
+
+  /* ---- Practice ---- */
+  .phase-label { color: var(--ember); font-size: 0.8rem; letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 8px; height: 1.2em; transition: opacity 0.8s; }
+  .phase-guide { color: var(--ink-dim); font-size: 1rem; font-style: italic; text-align: center; text-wrap: balance; height: 3.6em; display: flex; align-items: flex-start; justify-content: center; line-height: 1.8; max-width: 320px; margin-bottom: 44px; transition: opacity 0.9s ease; will-change: opacity; transform: translateZ(0); }
+  .phase-guide span { display: block; }
+
+  .orb-wrap { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-bottom: 44px; }
+  .skip-hint { margin-top: 18px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; letter-spacing: 0.08em; opacity: 0.7; }
+  .orb {
+    position: absolute; width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, rgba(217,139,74,0.22), rgba(217,139,74,0.04) 60%, transparent 72%);
+    box-shadow: 0 0 60px var(--glow), inset 0 0 40px rgba(217,139,74,0.1);
+  }
+  .ring { position: absolute; width: 200px; height: 200px; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 1.5; }
+  .ring .track { stroke: var(--line); }
+  .ring .prog { stroke: var(--ember); stroke-linecap: round; filter: drop-shadow(0 0 6px var(--glow)); transition: stroke-dashoffset 0.95s linear; }
+
+  .hourglass { position: absolute; width: 124px; height: 180px; }
+
+  .incense { position: absolute; width: 130px; height: 200px; }
+  #incEmber { filter: drop-shadow(0 0 6px var(--glow)); }
+  #incStick { transition: y 0.95s linear, height 0.95s linear; }
+  #incAsh { transition: height 0.95s linear; }
+  #incEmber { transition: cy 0.95s linear; }
+  #incSmoke { animation: smoke 5s ease-in-out infinite; transform-origin: 60px 36px; }
+  @keyframes smoke {
+    0%   { opacity: 0; }
+    30%  { opacity: 0.35; }
+    100% { opacity: 0; transform: translateY(-10px) scaleY(1.3); }
+  }
+  .hourglass .glass { fill: none; stroke: var(--ink-dim); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.5; }
+  .hourglass .cap { fill: var(--ink-faint); opacity: 0.55; }
+  .hourglass .post { stroke: var(--ink-faint); stroke-width: 1.4; opacity: 0.3; }
+  .hourglass #sandTop, .hourglass #sandBot { transition: d 0.95s linear; }
+  #sandStream { transition: opacity 0.4s; }
+  .disp-hidden { display: none !important; }
+
+  .controls button#cycleBtn { font-size: 1.1rem; letter-spacing: 0; padding: 12px 10px; }
+
+
+  .controls { display: flex; gap: 28px; align-items: center; }
+  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; transition: color 0.4s; }
+  .controls button:hover { color: var(--ink-dim); }
+
+  /* ---- Closing ---- */
+  .vow { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.25rem; line-height: 2; color: var(--ink-dim); text-align: center; margin-bottom: 40px; }
+  .vow span { display: block; text-wrap: balance; opacity: 0; animation: rise 2s ease forwards; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .vow { color: var(--ink); }
+  .sit-summary { color: var(--ink-dim); font-style: italic; font-size: 0.95rem; text-wrap: balance; margin-bottom: 36px; text-align: center; line-height: 1.7; opacity: 0; animation: rise 1.4s ease 12.5s forwards; }
+
+  /* ---- Log ---- */
+  .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
+  .log-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 30px; width: 100%; max-width: 280px; }
+  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.06); transition: background 0.4s; }
+  .log-cell.lit { background: var(--ember-soft); box-shadow: 0 0 10px var(--glow); }
+  .log-cell.today { outline: 1px solid var(--ink-faint); }
+  .log-stats { color: var(--ink-dim); font-size: 0.95rem; text-align: center; line-height: 1.9; font-style: italic; margin-bottom: 32px; }
+  .log-stats b { color: var(--ink); font-style: normal; }
+
+  .fade-slow { transition: opacity 1.5s ease; }
+</style>
+</head>
+<body>
+<div class="atmosphere"></div>
+<div class="grain"></div>
+
+<div class="stage">
+
+  <!-- HOME -->
+  <section class="screen active" id="home">
+    <div class="title">Just Sitting</div>
+    <div class="kanji">只管打坐</div>
+    <div class="stat-line" id="statLine"></div>
+    <div class="stage-name" id="stageName"></div>
+    <div class="stage-desc" id="stageDesc"></div>
+    <div class="plan" id="planRow"></div>
+    <button class="begin" id="beginBtn">Begin</button>
+    <div class="adjust" id="adjustRow"></div>
+    <div class="ghost-row">
+      <button class="ghost-link" id="logLink">the record</button>
+      <button class="ghost-link" id="settingsLink">settings</button>
+    </div>
+    <div class="test-banner disp-hidden" id="testBanner">testing mode — sittings will not be recorded</div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="settings">
+    <div class="log-title">Settings</div>
+    <div class="setting-block">
+      <button class="toggle-row" id="testToggle"><span class="tog-label">Testing mode</span><span class="tog-state" id="testState">off</span></button>
+      <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
+    </div>
+    <div class="setting-block">
+      <button class="toggle-row" id="addPastSit"><span class="tog-label">Mark a past sitting</span><span class="tog-state" id="pastSitState"></span></button>
+      <div class="setting-note">Adds one sitting to the record, for sits lost to a reset or done away from the app.</div>
+    </div>
+    <div class="setting-block">
+      <div class="tog-label" style="margin-bottom:10px;">The vows</div>
+      <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it.</div>
+      <div id="vowEditor"></div>
+      <div class="vow-actions">
+        <button class="ghost-link" id="vowSave">save</button>
+        <button class="ghost-link" id="vowReset">restore traditional vows</button>
+      </div>
+    </div>
+    <div class="setting-block">
+      <div class="tog-label" style="margin-bottom:10px;">Backup</div>
+      <div class="setting-note" style="margin-bottom:14px;">Your record and vows live on this device. Copy a backup, or paste one to restore — useful before clearing Safari data or moving to a new phone.</div>
+      <div class="vow-actions" style="margin-bottom:12px;">
+        <button class="ghost-link" id="exportBtn">copy backup</button>
+        <button class="ghost-link" id="importBtn">restore from backup</button>
+      </div>
+      <textarea id="backupBox" rows="3" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
+    </div>
+    <button class="ghost-link" id="settingsReturn">return</button>
+    <div style="color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;">v10 · standalone</div>
+  </section>
+
+  <!-- PRACTICE -->
+  <section class="screen" id="practice">
+    <div class="phase-label" id="phaseLabel"></div>
+    <div class="phase-guide" id="phaseGuide"></div>
+    <div class="orb-wrap" id="orbWrap">
+      <div class="orb"></div>
+      <!-- Ring display -->
+      <svg class="ring" id="ringDisplay" viewBox="0 0 200 200">
+        <circle class="track" cx="100" cy="100" r="94"></circle>
+        <circle class="prog" id="progRing" cx="100" cy="100" r="94"></circle>
+      </svg>
+      <!-- Hourglass display -->
+      <svg class="hourglass" id="hourglassDisplay" viewBox="0 0 120 190">
+        <defs>
+          <!-- Curved bulbs: sides bow outward, narrowing to the neck at y=95 -->
+          <clipPath id="topBulb">
+            <path d="M28 24 Q26 60 56 92 Q60 95 64 92 Q94 60 92 24 Z"></path>
+          </clipPath>
+          <clipPath id="botBulb">
+            <path d="M56 98 Q60 95 64 98 Q94 130 92 166 L28 166 Q26 130 56 98 Z"></path>
+          </clipPath>
+          <linearGradient id="sandGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--ember)"></stop>
+            <stop offset="100%" stop-color="var(--ember-soft)"></stop>
+          </linearGradient>
+        </defs>
+        <!-- sand in top: a body plus a funnel dip carved into its surface -->
+        <g clip-path="url(#topBulb)">
+          <path id="sandTop" fill="url(#sandGrad)" d=""></path>
+        </g>
+        <!-- sand in bottom: a body topped by a soft mound -->
+        <g clip-path="url(#botBulb)">
+          <path id="sandBot" fill="url(#sandGrad)" d=""></path>
+        </g>
+        <!-- falling stream -->
+        <rect id="sandStream" x="58.7" y="92" width="2.6" height="8" fill="var(--ember)" opacity="0.7"></rect>
+        <!-- glass: two curved bulbs -->
+        <path class="glass" d="M28 24 Q26 60 56 92 Q60 95 64 92 Q94 60 92 24"></path>
+        <path class="glass" d="M28 166 Q26 130 56 98 Q60 95 64 98 Q94 130 92 166"></path>
+        <!-- wooden caps -->
+        <rect class="cap" x="22" y="20" width="76" height="7" rx="3.5"></rect>
+        <rect class="cap" x="22" y="163" width="76" height="7" rx="3.5"></rect>
+        <line class="post" x1="30" y1="23.5" x2="30" y2="166.5"></line>
+        <line class="post" x1="90" y1="23.5" x2="90" y2="166.5"></line>
+      </svg>
+      <!-- Incense display -->
+      <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200">
+        <!-- holder base -->
+        <ellipse cx="60" cy="184" rx="26" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
+        <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
+        <!-- unburnt stick (full length); its top is the burn front -->
+        <rect id="incStick" x="58" y="40" width="4" height="112" fill="var(--ink-dim)"></rect>
+        <!-- ash above the burn front (grey, slightly translucent) -->
+        <rect id="incAsh" x="58" y="40" width="4" height="0" fill="#8a8175" opacity="0.7"></rect>
+        <!-- glowing ember at the burn front -->
+        <circle id="incEmber" cx="60" cy="40" r="4" fill="var(--ember)"></circle>
+        <!-- rising smoke -->
+        <path id="incSmoke" d="M60 36 q-6 -14 2 -26 q6 -10 -2 -22" fill="none" stroke="var(--ink-dim)" stroke-width="1.4" stroke-linecap="round" opacity="0.0"></path>
+      </svg>
+    </div>
+    <div class="controls">
+      <button id="cycleBtn">⊙</button>
+      <button id="pauseBtn">Pause</button>
+      <button id="endBtn">End</button>
+    </div>
+    <div class="skip-hint disp-hidden" id="skipHint">tap the circle to begin sitting</div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="screen" id="closing">
+    <div class="vow" id="vowBlock"></div>
+    <div class="sit-summary" id="sitSummary"></div>
+    <button class="ghost-link" id="closeReturn" style="opacity:0; animation: rise 1s ease 14s forwards;">return</button>
+  </section>
+
+  <!-- LOG -->
+  <section class="screen" id="log">
+    <div class="log-title">The Record</div>
+    <div class="log-grid" id="logGrid"></div>
+    <div class="log-stats" id="logStats"></div>
+    <button class="ghost-link" id="logReturn">return</button>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- PWA glue: manifest + offline service worker ----------
+  // If companion files (manifest.json, sw.js) are hosted alongside this page,
+  // they give the most reliable install + offline behavior. Otherwise we fall
+  // back to an inline manifest and service worker so a lone file still works.
+  const isFileProtocol = location.protocol === 'file:';
+  try {
+    // Manifest: link the external one; if it 404s the browser simply ignores it,
+    // so also attach an inline blob manifest as a safety net.
+    const ext = document.createElement('link');
+    ext.rel = 'manifest'; ext.href = 'manifest.json';
+    document.head.appendChild(ext);
+
+    const manifest = {
+      name: "Just Sitting", short_name: "Zazen", display: "standalone",
+      background_color: "#161109", theme_color: "#161109", orientation: "portrait",
+      icons: [{
+        src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' fill='%23161109'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%23f0a860' stroke-width='7' stroke-linecap='round' stroke-dasharray='300 40' transform='rotate(110 90 90)'/%3E%3C/svg%3E",
+        sizes: "180x180", type: "image/svg+xml"
+      }]
+    };
+    const mblob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+    const mlink = document.createElement('link');
+    mlink.rel = 'manifest';
+    mlink.href = URL.createObjectURL(mblob);
+    document.head.appendChild(mlink);
+  } catch(e){}
+
+  // Service worker: prefer the external sw.js (proper scope, real offline);
+  // fall back to an inline blob worker if it isn't present.
+  try {
+    if ('serviceWorker' in navigator && !isFileProtocol) {
+      navigator.serviceWorker.register('sw.js').catch(()=>{
+        const swCode = `
+          const CACHE='zazen-v10';
+          self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])))});
+          self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});
+          self.addEventListener('fetch',e=>{ if(e.request.method!=='GET')return;
+            e.respondWith(caches.match(e.request).then(h=>h||fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match('./'))));});`;
+        const swUrl = URL.createObjectURL(new Blob([swCode], {type:'text/javascript'}));
+        navigator.serviceWorker.register(swUrl).catch(()=>{});
+      });
+    }
+  } catch(e){}
+
+  // ---------- Audio: a soft bell via WebAudio (no files) ----------
+  let actx = null;
+  function ensureAudio() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+
+  // ---- Keisu / rin: the bowl-shaped standing bell. Low, long, shimmering. ----
+  function keisu(strikes = 1, gap = 2.4) {
+    try {
+      ensureAudio();
+
+      for (let s = 0; s < strikes; s++) {
+        const t = actx.currentTime + s * gap;
+        const f0 = 150; // low fundamental, like a standing bell
+
+        const out = actx.createGain();
+        out.gain.value = 0.9;
+        out.connect(actx.destination);
+
+        // Gentle high-cut so upper partials shimmer rather than bite.
+        const tone = actx.createBiquadFilter();
+        tone.type = 'lowpass';
+        tone.frequency.value = 3200;
+        tone.Q.value = 0.4;
+        tone.connect(out);
+
+        // Inharmonic partials of a struck bell: [ratio, level, decaySeconds, detuneCents]
+        // Longer decays on the low partials give the long sustaining hum;
+        // the small detunes beat against each other for that living shimmer.
+        const partials = [
+          [1.00, 0.55, 9.0,  0],
+          [2.00, 0.30, 7.0, -4],
+          [2.76, 0.42, 6.0,  5],   // prominent "strike tone" of real bells
+          [3.00, 0.16, 5.0, -6],
+          [4.07, 0.22, 4.0,  7],
+          [5.43, 0.13, 3.0, -8],
+          [6.79, 0.08, 2.2, 10],
+          [8.21, 0.05, 1.6, -9],
+        ];
+
+        partials.forEach(([ratio, level, decay, detune]) => {
+          const o = actx.createOscillator();
+          const g = actx.createGain();
+          o.type = 'sine';
+          o.frequency.value = f0 * ratio;
+          o.detune.value = detune;
+          // Soft swelling attack (~18ms) instead of an instant click,
+          // then a long exponential decay tail unique to each partial.
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(level, t + 0.018);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+          o.connect(g); g.connect(tone);
+          o.start(t); o.stop(t + decay + 0.1);
+        });
+
+        // Brief inharmonic "ting" of the mallet contact: a touch of noise
+        // shaped very short, sitting under the tone so the strike feels physical.
+        const noiseLen = 0.06;
+        const buf = actx.createBuffer(1, actx.sampleRate * noiseLen, actx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1);
+        const noise = actx.createBufferSource();
+        noise.buffer = buf;
+        const nf = actx.createBiquadFilter();
+        nf.type = 'bandpass'; nf.frequency.value = f0 * 5; nf.Q.value = 1.2;
+        const ng = actx.createGain();
+        ng.gain.setValueAtTime(0.12, t);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + noiseLen);
+        noise.connect(nf); nf.connect(ng); ng.connect(out);
+        noise.start(t); noise.stop(t + noiseLen);
+      }
+    } catch(e){}
+  }
+
+  // ---- Inkin: small handbell on a handle. Bright, high, shorter shimmer. ----
+  function inkin(strikes = 1, gap = 1.4) {
+    try {
+      ensureAudio();
+      for (let s = 0; s < strikes; s++) {
+        const t = actx.currentTime + s * gap;
+        const f0 = 660; // much higher than the keisu
+        const out = actx.createGain(); out.gain.value = 0.5;
+        out.connect(actx.destination);
+        // Bright but inharmonic; shorter decays than the big bowl.
+        const partials = [
+          [1.00, 0.5, 3.2,  0],
+          [2.74, 0.34, 2.4,  6],
+          [4.05, 0.20, 1.6, -7],
+          [5.80, 0.10, 1.0,  9],
+        ];
+        partials.forEach(([ratio, level, decay, detune]) => {
+          const o = actx.createOscillator(); const g = actx.createGain();
+          o.type = 'sine'; o.frequency.value = f0 * ratio; o.detune.value = detune;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(level, t + 0.006);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+          o.connect(g); g.connect(out);
+          o.start(t); o.stop(t + decay + 0.05);
+        });
+      }
+    } catch(e){}
+  }
+
+  // ---- Taku / clappers: two hardwood blocks struck. A sharp, dry crack. ----
+  function taku(strikes = 1, gap = 0.5) {
+    try {
+      ensureAudio();
+      for (let s = 0; s < strikes; s++) {
+        const t = actx.currentTime + s * gap;
+        const out = actx.createGain(); out.gain.value = 0.6;
+        out.connect(actx.destination);
+        // Very short filtered-noise burst + a brief woody resonance.
+        const len = 0.05;
+        const buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+        const noise = actx.createBufferSource(); noise.buffer = buf;
+        const bp = actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2200; bp.Q.value=1.0;
+        const ng = actx.createGain();
+        ng.gain.setValueAtTime(0.7, t);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + len);
+        noise.connect(bp); bp.connect(ng); ng.connect(out);
+        noise.start(t); noise.stop(t + len);
+        // A short pitched "knock" for the wood body.
+        const o = actx.createOscillator(); const g = actx.createGain();
+        o.type='triangle'; o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.4, t + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+        o.connect(g); g.connect(out);
+        o.start(t); o.stop(t + 0.14);
+      }
+    } catch(e){}
+  }
+
+  // ---- Han: a wooden board struck in an accelerating roll, calling to sit. ----
+  // Three rounds, each a slow-to-fast run ending in a firm single strike.
+  function han() {
+    try {
+      ensureAudio();
+      let t = actx.currentTime + 0.05;
+      const strike = (time, level=0.5, freq=1100) => {
+        const out = actx.createGain(); out.gain.value = 0.6; out.connect(actx.destination);
+        const len = 0.04;
+        const buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+        const noise = actx.createBufferSource(); noise.buffer = buf;
+        const bp = actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=freq; bp.Q.value=0.9;
+        const ng = actx.createGain();
+        ng.gain.setValueAtTime(level, time);
+        ng.gain.exponentialRampToValueAtTime(0.0001, time + len);
+        noise.connect(bp); bp.connect(ng); ng.connect(out);
+        noise.start(time); noise.stop(time + len);
+        const o = actx.createOscillator(); const g = actx.createGain();
+        o.type='triangle'; o.frequency.value = freq*0.55;
+        g.gain.setValueAtTime(0.0001, time);
+        g.gain.exponentialRampToValueAtTime(level*0.7, time + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
+        o.connect(g); g.connect(out);
+        o.start(time); o.stop(time + 0.12);
+      };
+      // Each round: an accelerating run of strikes, then a pause.
+      for (let round = 0; round < 3; round++) {
+        let gap = 0.5;                       // start slow
+        const runs = 7 + round * 2;          // more strikes each round
+        for (let i = 0; i < runs; i++) {
+          strike(t, 0.35 + 0.04*i);
+          t += gap;
+          gap *= 0.82;                       // accelerate
+          if (gap < 0.06) gap = 0.06;
+        }
+        strike(t, 0.7);                      // firm closing strike
+        t += 1.1;                            // pause between rounds
+      }
+    } catch(e){}
+  }
+
+  // Back-compat shim: existing calls to bell() route to the keisu.
+  function bell(strikes = 1, gap = 2.4) { keisu(strikes, gap); }
+
+  // Closing roll-down: three keisu strikes, each a touch later and softer,
+  // the traditional way a sitting is released.
+  function keisuRollDown() {
+    try {
+      ensureAudio();
+      const gaps = [0, 2.0, 3.4]; // cumulative-ish spacing that lengthens
+      let t = 0;
+      [1.0, 0.8, 0.6].forEach((lvl, i) => {
+        t = gaps[i];
+        setTimeout(()=>keisu(1, 0), t * 1000);
+      });
+    } catch(e){}
+  }
+
+  // ---------- Storage (light: dates, durations, count) ----------
+  const KEY = 'zazen.sessions.v1';
+  let testingMode = false;   // when true, sittings are NOT recorded
+  // ---------- Persistence (standalone: localStorage is primary) ----------
+  // In-memory caches keep the rest of the app synchronous; localStorage is the
+  // durable store for a home-screen web app on a stable origin.
+  let sessionsCache = [];
+  let vowsCache = null;      // filled by initStorage
+  function sGet(key){
+    try { return localStorage.getItem(key); } catch(e){ return null; }
+  }
+  function sSet(key, val){
+    try { localStorage.setItem(key, val); } catch(e){}
+  }
+  function load() { return sessionsCache; }
+  function save(arr) { sessionsCache = arr; sSet(KEY, JSON.stringify(arr)); }
+  function record(minutes) {
+    if (testingMode) return;   // testing sits leave the real record untouched
+    const arr = load().slice();
+    arr.push({ d: new Date().toISOString().slice(0,10), m: minutes, t: Date.now() });
+    save(arr);
+  }
+  function totalSits() { return load().length; }
+  function dayStr(d){ return d.toISOString().slice(0,10); }
+
+  // ---------- Vows (personalizable, persisted) ----------
+  const VOW_KEY = 'zazen.vows.v1';
+  const DEFAULT_VOWS = [
+    "Beings are numberless; I vow to free them.",
+    "Delusions are inexhaustible; I vow to end them.",
+    "Dharma gates are boundless; I vow to enter them.",
+    "The Buddha way is unsurpassable; I vow to realize it.",
+  ];
+  const PERSONAL_VOWS = [
+    "Pain is everywhere; I will meet it with care.",
+    "Distraction has no end; I will keep coming back.",
+    "Every moment is a doorway; I will walk through.",
+    "The way is beyond reach; I will walk it anyway.",
+  ];
+  function loadVows(){
+    return (Array.isArray(vowsCache) && vowsCache.length) ? vowsCache.slice() : PERSONAL_VOWS.slice();
+  }
+  function saveVows(arr){ vowsCache = arr.slice(); sSet(VOW_KEY, JSON.stringify(arr)); }
+
+  // Load persisted state, migrating any old localStorage record into the
+  // persistent store. The personalized vows are the default if none are saved.
+  function initStorage(){
+    const s = sGet(KEY);
+    if (s){ try { sessionsCache = JSON.parse(s) || []; } catch(e){ sessionsCache = []; } }
+    const v = sGet(VOW_KEY);
+    if (v){ try { const a = JSON.parse(v); if (Array.isArray(a) && a.length) vowsCache = a; } catch(e){} }
+    if (!vowsCache){ vowsCache = PERSONAL_VOWS.slice(); sSet(VOW_KEY, JSON.stringify(vowsCache)); }
+    renderHome();
+  }
+  function renderVows(){
+    const block = el('vowBlock');
+    const vows = loadVows();
+    block.innerHTML = '';
+    vows.forEach((line, i)=>{
+      const s = document.createElement('span');
+      s.textContent = line;
+      s.style.animationDelay = (1.2 + i * 2.8) + 's';
+      block.appendChild(s);
+    });
+  }
+
+  // ---------- Progression: depth unlocked by accumulated sits ----------
+  // Each stage defines the guidance + a default structure.
+  const STAGES = [
+    { min: 0,  name: "One Minute",
+      desc: "Begin small. One minute of sitting. Count each exhalation, one through ten.",
+      method: "count",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:60}] },
+    { min: 3,  name: "Two Minutes",
+      desc: "Two minutes now. Stay with the counting.",
+      method: "count",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:120}] },
+    { min: 6,  name: "Three Minutes",
+      desc: "Three minutes. The counting steadies you.",
+      method: "count",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:180}] },
+    { min: 10, name: "Four Minutes",
+      desc: "Four minutes. Let the counting grow quiet and easy.",
+      method: "count",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:240}] },
+    { min: 15, name: "Five Minutes",
+      desc: "Five minutes. A full sitting. Count, and return whenever you drift.",
+      method: "count",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:300}] },
+    { min: 22, name: "Following",
+      desc: "Let counting fall away. Simply follow the breath as it moves, without holding it.",
+      method: "follow",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:420}] },
+    { min: 32, name: "Two Periods",
+      desc: "Two sits now, bridged by slow walking. Let kinhin carry the stillness with you.",
+      method: "follow",
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:420},{type:'kinhin',sec:180},{type:'zazen',sec:420}] },
+    { min: 50, name: "Shikantaza",
+      desc: "Just sitting. No object, no technique. Thoughts arise and pass; you neither chase nor push.",
+      method: "open",
+      structure: [{type:'settle',sec:30},{type:'zazen',sec:600},{type:'kinhin',sec:180},{type:'zazen',sec:600}] },
+  ];
+
+  function currentStage() {
+    const n = totalSits();
+    let s = STAGES[0];
+    for (const st of STAGES) if (n >= st.min) s = st;
+    return s;
+  }
+  function nextStage() {
+    const n = totalSits();
+    for (const st of STAGES) if (n < st.min) return st;
+    return null;
+  }
+
+  const PHASE_META = {
+    settle: { label: "Settling", guide: "Arrive. Find the posture. Let the body grow still before the bell." },
+    zazen:  { label: "Zazen",   guide: null }, // guide filled from stage method
+    kinhin: { label: "Kinhin",  guide: "Rise slowly. Walk at half a breath per step, hands at the chest. Carry the stillness." },
+  };
+
+  // Settling cues rotate while the settle phase runs. First is always the
+  // volume reminder; the rest describe what this stage's practice entails.
+  const SETTLE_CUES = {
+    count: [
+      "Unmute your phone and raise the volume, so you hear the bell.",
+      "Find the posture: spine tall, hands forming the oval at the belly.",
+      "Eyes open and lowered, resting on the floor ahead.",
+      "When the bell sounds, count each exhalation, one through ten, then begin again.",
+    ],
+    follow: [
+      "Unmute your phone and raise the volume, so you hear the bell.",
+      "Settle the posture. Let the shoulders drop, the jaw soften.",
+      "This sitting, counting falls away.",
+      "When the bell sounds, simply follow the breath as it moves. Hold nothing.",
+    ],
+    open: [
+      "Unmute your phone and raise the volume, so you hear the bell.",
+      "Take the posture and let the body grow still.",
+      "This is shikantaza. Just sitting, no object, no technique.",
+      "When the bell sounds, sit. Thoughts arise and pass; you neither chase nor push.",
+    ],
+  };
+  let settleRotator = null;
+
+  // ---------- App state ----------
+  let userStructure = null;   // overrides stage structure if adjusted
+  let plan = [];              // active phase list
+  let phaseIdx = 0;
+  let phaseRemain = 0;
+  let phaseEndAt = 0;         // wall-clock ms when the current phase ends
+  let sessionStartAt = 0;     // wall-clock ms when sitting began (for elapsed)
+  let totalPlanned = 0;
+  let elapsedTotal = 0;
+  let timer = null;
+  let paused = false;
+
+  // ---------- Elements ----------
+  const el = id => document.getElementById(id);
+  const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), log: el('log'), settings: el('settings') };
+  function show(name) { Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+
+  // ---------- Home rendering ----------
+  function fmtMin(sec){ return Math.round(sec/60); }
+  function planFromStage(stage){ return stage.structure.map(p=>({...p})); }
+
+  function renderHome() {
+    const stage = currentStage();
+    const n = totalSits();
+    const arr = load();
+    el('testBanner').classList.toggle('disp-hidden', !testingMode);
+
+    // stat line
+    if (n === 0) {
+      el('statLine').innerHTML = "The first sit is the same as the ten-thousandth.";
+    } else {
+      const days = new Set(arr.map(s=>s.d)).size;
+      let gapNote = "";
+      const last = arr[arr.length-1];
+      const lastDate = new Date(last.d);
+      const today = new Date(dayStr(new Date()));
+      const diff = Math.round((today - lastDate)/86400000);
+      if (diff === 0) gapNote = "You have already sat today.";
+      else if (diff === 1) gapNote = "Yesterday you sat.";
+      else gapNote = `${diff} days since the last sitting.`;
+      el('statLine').innerHTML = `<b>${n}</b> sittings across <b>${days}</b> days.<br>${gapNote}`;
+    }
+
+    // stage
+    el('stageName').textContent = stage.name;
+    el('stageDesc').textContent = stage.desc;
+    const nx = nextStage();
+    if (nx) {
+      const remaining = nx.min - n;
+      el('stageDesc').textContent += ` `;
+      const small = document.createElement('span');
+    }
+
+    // plan row (reflect active structure)
+    const struct = userStructure || planFromStage(stage);
+    renderPlan(struct);
+    renderAdjust(stage);
+  }
+
+  function renderPlan(struct){
+    const row = el('planRow');
+    row.innerHTML = '';
+    const total = struct.reduce((a,p)=>a+p.sec,0);
+    struct.forEach((p,i)=>{
+      const seg = document.createElement('span');
+      seg.className = 'seg';
+      const label = p.type === 'settle' ? 'settle' : p.type === 'kinhin' ? 'walk' : 'sit';
+      seg.textContent = `${label} ${fmtMin(p.sec)}m`;
+      row.appendChild(seg);
+      if (i < struct.length-1){ const d=document.createElement('span'); d.className='dot'; d.textContent='·'; row.appendChild(d); }
+    });
+    const tot = document.createElement('span');
+    tot.className='seg'; tot.style.marginLeft='10px'; tot.style.color='var(--ember)';
+    tot.textContent = `(${fmtMin(total)}m)`;
+    row.appendChild(tot);
+  }
+
+  function renderAdjust(stage){
+    const row = el('adjustRow');
+    row.innerHTML = '';
+    // Length presets relative to stage: shorter / suggested / longer
+    const presets = [
+      { k:'short', label:'shorter' },
+      { k:'plan',  label:'as planned' },
+      { k:'long',  label:'longer' },
+    ];
+    presets.forEach(pr=>{
+      const b = document.createElement('button');
+      b.textContent = pr.label;
+      if ((pr.k==='plan' && !userStructure) ) b.classList.add('on');
+      b.onclick = ()=>{
+        if (pr.k==='plan') userStructure = null;
+        else userStructure = scaleStructure(planFromStage(stage), pr.k==='short'?0.6:1.5);
+        renderHome();
+      };
+      row.appendChild(b);
+    });
+    // spacer
+    const sp = document.createElement('span');
+    sp.style.width = '100%'; sp.style.height = '2px';
+    row.appendChild(sp);
+    // display-mode preference. Incense only makes sense for a meaningful burn,
+    // so it unlocks once the sitting is at least five minutes.
+    const longestSit = Math.max(0, ...(userStructure || planFromStage(stage))
+      .filter(p=>p.type==='zazen').map(p=>p.sec));
+    const incenseUnlocked = longestSit >= 300;
+    if (!incenseUnlocked && (displayMode === 'incense')) displayMode = 'ring';
+    const modes = [
+      { k:'ring',    label:'ring' },
+      { k:'glass',   label:'hourglass' },
+      { k:'incense', label:'incense', locked: !incenseUnlocked },
+      { k:'random',  label:'random' },
+    ];
+    modes.forEach(m=>{
+      if (m.locked) return; // hide until unlocked
+      const b = document.createElement('button');
+      b.textContent = m.label;
+      if (displayMode === m.k) b.classList.add('on');
+      b.onclick = ()=>{ displayMode = m.k; renderHome(); };
+      row.appendChild(b);
+    });
+  }
+
+  function scaleStructure(struct, factor){
+    return struct.map(p=>{
+      if (p.type==='settle') return {...p};
+      return { ...p, sec: Math.max(60, Math.round(p.sec*factor/60)*60) };
+    });
+  }
+
+  // ---------- Practice flow ----------
+  function startPractice(){
+    const stage = currentStage();
+    plan = userStructure || planFromStage(stage);
+    phaseIdx = 0;
+    elapsedTotal = 0;
+    totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
+    paused = false;
+    sessionStartAt = Date.now();
+    el('pauseBtn').textContent = 'Pause';
+    // Unlock audio on this user gesture: create + resume + play a silent blip so
+    // iOS marks the context as user-activated. Without this, later bells stay mute.
+    ensureAudio();
+    try {
+      const s = actx.createOscillator(); const g = actx.createGain();
+      g.gain.value = 0.0001; s.connect(g); g.connect(actx.destination);
+      s.start(); s.stop(actx.currentTime + 0.02);
+    } catch(e){}
+    resolveDisplay();
+    show('practice');
+    // The han is the wooden board that calls practitioners to the hall.
+    // It opens the settle phase, sounding while you take your seat.
+    acquireWakeLock();
+    han();
+    startPhase();
+    runTimer();
+  }
+
+  function startPhase(){
+    const phase = plan[phaseIdx];
+    phaseRemain = phase.sec;
+    phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
+    const meta = PHASE_META[phase.type];
+    el('phaseLabel').textContent = meta.label;
+    stopSettleCues();
+    const isSettle = phase.type === 'settle';
+    el('skipHint').classList.toggle('disp-hidden', !isSettle);
+    el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
+    if (phase.type === 'settle') {
+      const stage = currentStage();
+      startSettleCues(SETTLE_CUES[stage.method] || SETTLE_CUES.count);
+    } else if (phase.type === 'kinhin') {
+      el('phaseGuide').textContent = meta.guide;
+    } else {
+      // zazen: silence. No guidance text to disturb the sitting.
+      el('phaseGuide').textContent = '';
+    }
+    // Opening signals follow tradition. The settle phase already opened with
+    // the han in startPractice, so we only sound openings for sits and walks.
+    if (phaseIdx > 0) {
+      if (phase.type === 'zazen') {
+        // Shijosho: two strikes of the keisu to begin a sitting.
+        keisu(2, 2.6);
+      } else if (phase.type === 'kinhin') {
+        // Two sharp taku to signal rising into walking meditation.
+        taku(2, 0.5);
+      }
+    } else if (phase.type === 'zazen') {
+      // First phase is a bare zazen (no settle in this structure): still open it.
+      keisu(2, 2.6);
+    }
+    applyDisplayVisibility();
+    drawProgress(true);
+  }
+
+  function startSettleCues(cues){
+    const guideEl = el('phaseGuide');
+    let i = 0;
+    const slots = cues.length;
+    const interval = Math.max(5000, Math.floor((phaseRemain * 1000) / slots));
+
+    // Put the text in place while fully invisible, force the browser to finish
+    // laying it out (including text-wrap: balance) by reading a layout value,
+    // THEN fade in. Because layout is already final, both lines rise together.
+    function revealCue(text){
+      guideEl.textContent = text;
+      // Force synchronous reflow so wrapping/balancing is resolved now, not mid-fade.
+      void guideEl.offsetHeight;
+      requestAnimationFrame(()=>{ guideEl.style.opacity = 1; });
+    }
+
+    // First cue: no fade-out before it; just set invisible, then reveal.
+    guideEl.style.transition = 'none';
+    guideEl.style.opacity = 0;
+    void guideEl.offsetHeight;
+    guideEl.style.transition = '';
+    revealCue(cues[0]);
+
+    function fadeToNext(){
+      const onOut = (e) => {
+        if (e.propertyName !== 'opacity') return;
+        guideEl.removeEventListener('transitionend', onOut);
+        revealCue(cues[i]);
+      };
+      guideEl.addEventListener('transitionend', onOut);
+      guideEl.style.opacity = 0;
+    }
+
+    settleRotator = setInterval(()=>{
+      if (paused) return;
+      i++;
+      if (i >= cues.length){ clearInterval(settleRotator); settleRotator = null; return; }
+      fadeToNext();
+    }, interval);
+  }
+  function stopSettleCues(){
+    if (settleRotator){ clearInterval(settleRotator); settleRotator = null; }
+    el('phaseGuide').style.opacity = 1;
+  }
+
+  function advancePhase(){
+    const ending = plan[phaseIdx];
+    phaseIdx++;
+    // Closing signal for the phase that just finished.
+    if (ending && ending.type === 'zazen' && phaseIdx < plan.length) {
+      // A single inkin ends the sitting (its brightness lifts you out of stillness).
+      inkin(1);
+    }
+    if (phaseIdx >= plan.length){ finish(); return; }
+    // The next phase's opening signal is sounded inside startPhase.
+    // Small delay so a closing inkin isn't stepped on by the next opening.
+    setTimeout(startPhase, ending && ending.type === 'zazen' ? 1400 : 0);
+  }
+
+  // Tapping the orb during settling skips the rest of the arriving phase and
+  // begins the sit at once, for when you're already seated and ready.
+  function skipSettle(){
+    const phase = plan[phaseIdx];
+    if (!phase || phase.type !== 'settle' || paused) return;
+    stopSettleCues();
+    phaseEndAt = Date.now();   // mark settle as finished now
+    phaseRemain = 0;
+    advancePhase();
+  }
+
+  // ---------- Wake lock: keep the screen on during practice ----------
+  let wakeLock = null;
+  let keepAwakeVideo = null;
+  async function acquireWakeLock(){
+    let ok = false;
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        ok = true;
+      }
+    } catch(e){ /* blocked or denied; fall through */ }
+    if (!ok) enableVideoKeepAwake();
+  }
+  // Fallback: an invisible, playing video (from a live canvas stream). iOS
+  // treats active inline video as media playback and holds the screen awake,
+  // covering embedded views where the Wake Lock API is unavailable.
+  // Fallback: a playing video from a live canvas stream keeps the screen
+  // awake. Some embedded views force video into a FULLSCREEN native player,
+  // so rather than a hidden black pixel, we render the actual practice scene
+  // into the canvas: the takeover then shows a working practice display.
+  let kaCanvas = null, kaCtx = null, kaPaint = null;
+  function paintKeepAwakeScene(){
+    if (!kaCtx) return;
+    const W = kaCanvas.width, H = kaCanvas.height;
+    const g = kaCtx;
+    // candlelit background
+    const grad = g.createRadialGradient(W/2, H*0.45, 40, W/2, H*0.5, H*0.8);
+    grad.addColorStop(0, '#241b10');
+    grad.addColorStop(1, '#120d07');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, W, H);
+    // phase label
+    const phase = plan[phaseIdx];
+    const label = phase ? (PHASE_META[phase.type] || {label:''}).label : '';
+    g.fillStyle = '#f0a860';
+    g.font = '300 26px Georgia, serif';
+    g.textAlign = 'center';
+    g.fillText((label || '').toUpperCase().split('').join(' '), W/2, H*0.22);
+    // orb glow
+    const cx = W/2, cy = H*0.52, R = Math.min(W, H) * 0.27;
+    const glow = g.createRadialGradient(cx, cy, R*0.2, cx, cy, R*1.7);
+    glow.addColorStop(0, 'rgba(240,168,96,0.20)');
+    glow.addColorStop(1, 'rgba(240,168,96,0)');
+    g.fillStyle = glow;
+    g.fillRect(cx-R*2, cy-R*2, R*4, R*4);
+    // progress ring
+    const frac = (phase && phase.sec) ? (phase.sec - phaseRemain)/phase.sec : 0;
+    g.lineWidth = 3;
+    g.strokeStyle = 'rgba(205,189,157,0.25)';
+    g.beginPath(); g.arc(cx, cy, R, 0, Math.PI*2); g.stroke();
+    g.strokeStyle = '#f0a860';
+    g.lineCap = 'round';
+    g.beginPath(); g.arc(cx, cy, R, -Math.PI/2, -Math.PI/2 + Math.PI*2*frac); g.stroke();
+  }
+  function enableVideoKeepAwake(){
+    try {
+      if (!keepAwakeVideo) {
+        kaCanvas = document.createElement('canvas');
+        kaCanvas.width = 480; kaCanvas.height = 800;
+        kaCtx = kaCanvas.getContext('2d');
+        paintKeepAwakeScene();
+        kaPaint = setInterval(paintKeepAwakeScene, 1000);
+        keepAwakeVideo = document.createElement('video');
+        keepAwakeVideo.srcObject = kaCanvas.captureStream(1);
+        keepAwakeVideo.muted = true;
+        keepAwakeVideo.setAttribute('muted','');
+        keepAwakeVideo.playsInline = true;
+        keepAwakeVideo.setAttribute('playsinline','');
+        keepAwakeVideo.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+        document.body.appendChild(keepAwakeVideo);
+      }
+      if (!kaPaint && kaCtx) { paintKeepAwakeScene(); kaPaint = setInterval(paintKeepAwakeScene, 1000); }
+      keepAwakeVideo.play().catch(()=>{});
+    } catch(e){}
+  }
+  function releaseWakeLock(){
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch(e){}
+    try {
+      if (keepAwakeVideo) {
+        keepAwakeVideo.pause();
+        // If the platform promoted the video to fullscreen, step back out so
+        // the closing screen (vows) is visible.
+        if (keepAwakeVideo.webkitExitFullscreen) keepAwakeVideo.webkitExitFullscreen();
+        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      }
+      if (kaPaint) { clearInterval(kaPaint); kaPaint = null; }
+    } catch(e){}
+  }
+
+  function runTimer(){
+    clearInterval(timer);
+    timer = setInterval(tick, 250);  // finer cadence so wake is responsive
+  }
+
+  function tick(){
+    if (paused) return;
+    if (phaseIdx >= plan.length) return;   // session over; never tick past the end
+    const now = Date.now();
+    phaseRemain = Math.max(0, Math.round((phaseEndAt - now) / 1000));
+    if (phaseRemain <= 0){
+      advancePhase();      // may itself start a new phase with its own deadline
+    } else {
+      drawProgress();
+    }
+  }
+
+  // Display mode: 'ring', 'glass', or 'random' (picks one per session).
+  let displayMode = 'ring';
+  let activeDisplay = 'ring'; // resolved mode for this session
+
+  function incenseAvailable(){
+    // True only if the current plan has a sitting of at least five minutes.
+    const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
+    return longest >= 300;
+  }
+  function resolveDisplay(){
+    if (displayMode === 'random') {
+      const pool = ['ring','glass'];
+      if (incenseAvailable()) pool.push('incense');
+      activeDisplay = pool[Math.floor(Math.random()*pool.length)];
+    } else {
+      activeDisplay = displayMode;
+      // Safety: if incense was somehow selected for a short sit, fall back.
+      if (activeDisplay === 'incense' && !incenseAvailable()) activeDisplay = 'ring';
+    }
+    applyDisplayVisibility();
+  }
+  function applyDisplayVisibility(){
+    // Incense measures a sitting period, not the arriving phase. During settle,
+    // fall back to the ring so a stick doesn't appear before the practice begins.
+    const phase = plan[phaseIdx];
+    const inSettle = phase && phase.type === 'settle';
+    let effective = activeDisplay;
+    if (inSettle && effective === 'incense') effective = 'ring';
+    el('ringDisplay').classList.toggle('disp-hidden', effective !== 'ring');
+    el('hourglassDisplay').classList.toggle('disp-hidden', effective !== 'glass');
+    el('incenseDisplay').classList.toggle('disp-hidden', effective !== 'incense');
+  }
+
+  function drawProgress(instant){
+    const phase = plan[phaseIdx];
+    const frac = phase.sec ? (phase.sec - phaseRemain)/phase.sec : 0; // 0→1 elapsed
+    const animated = [el('progRing'), el('sandTop'), el('sandBot'), el('incStick'), el('incAsh'), el('incEmber')];
+    if (instant) {
+      // Suppress transitions for this draw so a phase reset snaps to its start
+      // state instead of animating backward from the previous phase's end.
+      animated.forEach(e=>{ e.style.transition = 'none'; });
+    }
+    // Ring
+    const r = 94, circ = 2*Math.PI*r;
+    const ring = el('progRing');
+    ring.style.strokeDasharray = circ;
+    ring.style.strokeDashoffset = circ * (1 - frac);
+    // Hourglass: top drains (surface dips into a funnel), bottom fills (mounds up).
+    // The clip paths confine these to the curved bulbs, so we just draw a body
+    // whose top edge is a curve, generous enough to be clipped to the glass.
+    const sandTop = el('sandTop'), sandBot = el('sandBot');
+    // remaining fraction of sand still in the top bulb
+    const rem = 1 - frac;
+    // Top bulb spans y≈24 (wide top) to y≈93 (neck). Surface sits lower as it drains.
+    const topSurfaceY = 26 + (93 - 26) * frac;       // descends toward the neck
+    const dip = 4 + 10 * rem;                         // funnel depth, shrinks as it empties
+    // Body from the surface down to just past the neck; top edge dips in the middle.
+    sandTop.setAttribute('d',
+      `M16 ${topSurfaceY}
+       Q60 ${topSurfaceY + dip} 60 ${topSurfaceY + dip}
+       Q60 ${topSurfaceY + dip} 104 ${topSurfaceY}
+       L104 96 L16 96 Z`);
+    // Bottom bulb spans y≈97 (neck) to y≈166 (wide base). Mound rises as it fills.
+    const botTopY = 166 - (166 - 99) * frac;          // top of the collected sand rises
+    const mound = 6 * frac;                           // mound height grows with fill
+    sandBot.setAttribute('d',
+      `M16 166
+       L16 ${botTopY}
+       Q60 ${botTopY - mound} 104 ${botTopY}
+       L104 166 Z`);
+    el('sandStream').style.opacity = (frac > 0 && frac < 1 && !paused) ? '0.7' : '0';
+    // Incense: the burn front descends as the stick is consumed.
+    const yTop = 40, yBot = 152, fullLen = yBot - yTop; // 112
+    const burnY = yTop + fullLen * frac;
+    const stick = el('incStick'), ash = el('incAsh'), ember = el('incEmber'), smoke = el('incSmoke');
+    stick.setAttribute('y', String(burnY));
+    stick.setAttribute('height', String(Math.max(0, yBot - burnY)));
+    ash.setAttribute('y', String(yTop));
+    ash.setAttribute('height', String(Math.max(0, burnY - yTop)));
+    ember.setAttribute('cy', String(burnY));
+    ember.style.opacity = (frac < 1) ? '1' : '0';
+    smoke.setAttribute('transform', `translate(0, ${burnY - 40})`);
+    smoke.style.display = (frac > 0 && frac < 1 && !paused) ? 'block' : 'none';
+    if (instant) {
+      // Re-enable transitions on the next frame so subsequent ticks animate.
+      void el('progRing').offsetWidth; // force reflow so the 'none' is committed
+      requestAnimationFrame(()=>{ animated.forEach(e=>{ e.style.transition = ''; }); });
+    }
+  }
+
+
+  function finish(){
+    clearInterval(timer); timer = null; stopSettleCues();
+    keisuRollDown();
+    const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
+    record(sitMinutes);
+    let note;
+    if (testingMode) {
+      note = `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
+    } else {
+      const n = totalSits();
+      const nx = nextStage();
+      note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
+      if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
+      else { note += `<br>The full rhythm is yours now.`; }
+    }
+    el('sitSummary').innerHTML = note;
+    releaseWakeLock();
+    renderVows();
+    show('closing');
+  }
+
+  function endEarly(){
+    clearInterval(timer); timer = null; stopSettleCues();
+    keisu(2, 2.8);
+    // Zazen minutes actually elapsed: completed zazen phases plus the current
+    // partial one if we're mid-sit. Computed from wall clock, so sleep is fine.
+    const zMin = elapsedZazenMinutes();
+    if (zMin >= 1) record(zMin);
+    if (testingMode) {
+      el('sitSummary').innerHTML = (zMin >= 1)
+        ? `${zMin} minutes. Ended early.<br>Testing sitting — not added to the record.`
+        : `A brief sitting. Testing — nothing recorded.`;
+    } else {
+      const n = totalSits();
+      el('sitSummary').innerHTML = (zMin>=1)
+        ? `${zMin} minutes. Ended early, which is also practice.<br>The ${ordinal(n)} sitting.`
+        : `A brief sitting. No mark made; begin again whenever.`;
+    }
+    releaseWakeLock();
+    renderVows();
+    show('closing');
+  }
+
+  function elapsedZazenMinutes(){
+    let sec = 0;
+    for (let k = 0; k < phaseIdx; k++){
+      if (plan[k].type === 'zazen') sec += plan[k].sec;
+    }
+    const cur = plan[phaseIdx];
+    if (cur && cur.type === 'zazen'){
+      sec += Math.max(0, cur.sec - phaseRemain);
+    }
+    return Math.round(sec / 60);
+  }
+
+  function ordinal(n){
+    const s=["th","st","nd","rd"], v=n%100;
+    return n + (s[(v-20)%10]||s[v]||s[0]);
+  }
+
+  // ---------- Log ----------
+  function renderLog(){
+    const arr = load();
+    const grid = el('logGrid');
+    grid.innerHTML = '';
+    // last 28 days
+    const today = new Date(dayStr(new Date()));
+    const sat = new Set(arr.map(s=>s.d));
+    for (let i=27;i>=0;i--){
+      const d = new Date(today); d.setDate(d.getDate()-i);
+      const ds = dayStr(d);
+      const c = document.createElement('div');
+      c.className = 'log-cell' + (sat.has(ds)?' lit':'') + (i===0?' today':'');
+      grid.appendChild(c);
+    }
+    const n = arr.length;
+    const days = new Set(arr.map(s=>s.d)).size;
+    const totalMin = arr.reduce((a,s)=>a+(s.m||0),0);
+    // current streak
+    let streak = 0; let cur = new Date(today);
+    while (sat.has(dayStr(cur))){ streak++; cur.setDate(cur.getDate()-1); }
+    el('logStats').innerHTML =
+      `<b>${n}</b> sittings · <b>${days}</b> days · <b>${totalMin}</b> minutes<br>` +
+      (streak>0?`current thread: <b>${streak}</b> ${streak===1?'day':'days'}`:`the cushion waits`);
+  }
+
+  // ---------- Wiring ----------
+  el('beginBtn').onclick = startPractice;
+  el('pauseBtn').onclick = ()=>{
+    paused = !paused;
+    if (paused) {
+      // Freeze the remaining time at the moment of pausing.
+      phaseRemain = Math.max(0, Math.round((phaseEndAt - Date.now()) / 1000));
+    } else {
+      // Resume: push the deadline out by the frozen remaining time.
+      phaseEndAt = Date.now() + phaseRemain * 1000;
+    }
+    el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+    drawProgress();
+  };
+  el('endBtn').onclick = endEarly;
+  // When the screen wakes or the tab refocuses, audio may be suspended and the
+  // interval may have been throttled. Resume audio and resync the clock at once
+  // so any phase boundary crossed during sleep fires immediately on wake.
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.visibilityState === 'visible') {
+      if (actx && actx.state === 'suspended') actx.resume();
+      const sessionLive = timer && phaseIdx < plan.length;
+      if (sessionLive) {
+        acquireWakeLock();   // iOS releases the lock on backgrounding
+        if (!paused) tick();
+      }
+    }
+  });
+  // Cycle the time display live: ring → hourglass → ring …
+  el('orbWrap').onclick = skipSettle;
+  el('cycleBtn').onclick = ()=>{
+    const order = incenseAvailable() ? ['ring','glass','incense'] : ['ring','glass'];
+    const idx = order.indexOf(activeDisplay);
+    activeDisplay = order[(idx + 1) % order.length];
+    applyDisplayVisibility();
+    drawProgress(true);
+  };
+  el('logLink').onclick = ()=>{ renderLog(); show('log'); };
+  el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
+  el('settingsReturn').onclick = ()=>{ renderHome(); show('home'); };
+  el('testToggle').onclick = ()=>{
+    testingMode = !testingMode;
+    renderSettings();
+    // reflect on home immediately next time it's shown
+  };
+  el('addPastSit').onclick = ()=>{
+    const arr = load().slice();
+    arr.push({ d: dayStr(new Date()), m: 0, t: Date.now(), past: true });
+    save(arr);
+    renderSettings();
+  };
+  el('exportBtn').onclick = ()=>{
+    const payload = { v: 1, sessions: load(), vows: loadVows() };
+    const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    const box = el('backupBox');
+    box.value = code;
+    box.select();
+    try { document.execCommand('copy'); } catch(e){}
+    try { navigator.clipboard && navigator.clipboard.writeText(code); } catch(e){}
+    el('exportBtn').textContent = 'copied';
+    setTimeout(()=>{ el('exportBtn').textContent = 'copy backup'; }, 1400);
+  };
+  el('importBtn').onclick = ()=>{
+    const raw = el('backupBox').value.trim();
+    if (!raw){ el('importBtn').textContent = 'paste a code first'; setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600); return; }
+    try {
+      const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      if (Array.isArray(payload.sessions)) save(payload.sessions);
+      if (Array.isArray(payload.vows) && payload.vows.length) saveVows(payload.vows);
+      el('importBtn').textContent = 'restored';
+      renderSettings();
+      setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600);
+    } catch(e){
+      el('importBtn').textContent = 'invalid code';
+      setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600);
+    }
+  };
+  el('vowSave').onclick = ()=>{
+    const lines = Array.from(el('vowEditor').querySelectorAll('textarea'))
+      .map(t=>t.value.trim()).filter(t=>t.length);
+    if (lines.length) { saveVows(lines); }
+    else { saveVows(DEFAULT_VOWS.slice()); }
+    el('vowSave').textContent = 'saved';
+    setTimeout(()=>{ el('vowSave').textContent = 'save'; }, 1400);
+  };
+  el('vowReset').onclick = ()=>{
+    saveVows(DEFAULT_VOWS.slice());
+    renderSettings();
+  };
+
+  function renderSettings(){
+    const tog = el('testToggle');
+    tog.classList.toggle('on', testingMode);
+    el('testState').textContent = testingMode ? 'on' : 'off';
+    el('testBanner').classList.toggle('disp-hidden', !testingMode);
+    el('pastSitState').textContent = totalSits() + ' recorded';
+    // Build vow editor: four fields, each labeled with the traditional vow it
+    // corresponds to, with the practitioner's custom line as the editable value.
+    const ed = el('vowEditor');
+    ed.innerHTML = '';
+    const vows = loadVows();
+    for (let i = 0; i < 4; i++){
+      const label = document.createElement('div');
+      label.className = 'vow-field-label';
+      label.textContent = DEFAULT_VOWS[i];
+      ed.appendChild(label);
+      const ta = document.createElement('textarea');
+      ta.rows = 2;
+      ta.value = vows[i] || '';
+      ta.placeholder = 'your vow, or leave empty';
+      ed.appendChild(ta);
+    }
+  }
+  el('logReturn').onclick = ()=>{ renderHome(); show('home'); };
+  el('closeReturn').onclick = ()=>{ renderHome(); show('home'); };
+
+  // init: paint immediately with empty caches, then re-render once the
+  // persistent store has loaded.
+  renderHome();
+  initStorage();
+})();
+</script>
+</body>
+</html>
