@@ -139,8 +139,8 @@
   .incense { position: absolute; width: 130px; height: 200px; }
   #incEmber { filter: drop-shadow(0 0 6px var(--glow)); }
   #incStick { transition: y 0.95s linear, height 0.95s linear; }
-  #incAsh { transition: height 0.95s linear; }
   #incEmber { transition: cy 0.95s linear; }
+  .ash-seg { transition: opacity 2.5s ease; }
   #incSmoke { animation: smoke 5s ease-in-out infinite; transform-origin: 60px 36px; }
   @keyframes smoke {
     0%   { opacity: 0; }
@@ -233,7 +233,7 @@
       <textarea id="backupBox" rows="3" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
     </div>
     <button class="ghost-link" id="settingsReturn">return</button>
-    <div style="color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;">v10 · standalone</div>
+    <div id="versionMark" style="color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;"></div>
   </section>
 
   <!-- PRACTICE -->
@@ -288,8 +288,8 @@
         <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
         <!-- unburnt stick (full length); its top is the burn front -->
         <rect id="incStick" x="58" y="40" width="4" height="112" fill="var(--ink-dim)"></rect>
-        <!-- ash above the burn front (grey, slightly translucent) -->
-        <rect id="incAsh" x="58" y="40" width="4" height="0" fill="#8a8175" opacity="0.7"></rect>
+        <!-- ash segments accumulate above the ember and shed irregularly -->
+        <g id="incAshGroup"></g>
         <!-- glowing ember at the burn front -->
         <circle id="incEmber" cx="60" cy="40" r="4" fill="var(--ember)"></circle>
         <!-- rising smoke -->
@@ -325,6 +325,10 @@
 (function(){
   "use strict";
 
+  // Single source of truth for the version. Bump this one number on each update;
+  // it drives both the on-screen marker and the service-worker cache name.
+  const APP_VERSION = '11';
+
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
   // they give the most reliable install + offline behavior. Otherwise we fall
@@ -353,14 +357,15 @@
   } catch(e){}
 
   // Service worker: prefer the external sw.js (proper scope, real offline);
-  // fall back to an inline blob worker if it isn't present.
+  // fall back to an inline blob worker if it isn't present. The version is
+  // passed so the SW's cache name tracks APP_VERSION and updates cleanly.
   try {
     if ('serviceWorker' in navigator && !isFileProtocol) {
-      navigator.serviceWorker.register('sw.js').catch(()=>{
+      navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).catch(()=>{
         const swCode = `
-          const CACHE='zazen-v10';
+          const CACHE='zazen-v${APP_VERSION}';
           self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])))});
-          self.addEventListener('activate',e=>{e.waitUntil(self.clients.claim())});
+          self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
           self.addEventListener('fetch',e=>{ if(e.request.method!=='GET')return;
             e.respondWith(caches.match(e.request).then(h=>h||fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match('./'))));});`;
         const swUrl = URL.createObjectURL(new Blob([swCode], {type:'text/javascript'}));
@@ -873,6 +878,7 @@
     const phase = plan[phaseIdx];
     phaseRemain = phase.sec;
     phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
+    resetAsh();   // fresh stick for this phase
     const meta = PHASE_META[phase.type];
     el('phaseLabel').textContent = meta.label;
     stopSettleCues();
@@ -1086,6 +1092,56 @@
   let displayMode = 'ring';
   let activeDisplay = 'ring'; // resolved mode for this session
 
+  // ---- Incense ash: segments that accumulate above the ember and shed ----
+  // The ember descends at a steady rate (the true clock). Above it, ash builds
+  // as discrete segments; each segment persists, then fades to background at an
+  // irregular interval slower than the burn, mimicking ash sloughing off.
+  const ASH_TOP = 40;                 // y where the stick starts (top)
+  let ashSegments = [];               // {yTop, yBot, el, shedAt, shedding}
+  let ashLastBurnY = ASH_TOP;         // burn front position when we last added ash
+  let ashSessionStart = 0;
+  function resetAsh(){
+    const g = el('incAshGroup');
+    if (g) g.innerHTML = '';
+    ashSegments = [];
+    ashLastBurnY = ASH_TOP;
+    ashSessionStart = Date.now();
+  }
+  function updateAsh(burnY, running){
+    const g = el('incAshGroup');
+    if (!g) return;
+    // Add a new ash segment for the freshly burnt length since last update.
+    if (running && burnY > ashLastBurnY + 0.6){
+      const seg = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      seg.setAttribute('class','ash-seg');
+      seg.setAttribute('x','58.4');
+      seg.setAttribute('width','3.2');
+      seg.setAttribute('y', String(ashLastBurnY));
+      seg.setAttribute('height', String(burnY - ashLastBurnY));
+      seg.setAttribute('fill', '#8a8175');
+      seg.setAttribute('opacity', '0.7');
+      g.appendChild(seg);
+      // Schedule this segment to shed at an irregular, slower-than-burn delay.
+      // Ash clings a good while, then a sizable stretch lets go at once.
+      const now = Date.now();
+      const delay = 14000 + Math.random() * 26000; // 14–40s after forming
+      ashSegments.push({ el: seg, shedAt: now + delay, shedding: false });
+      ashLastBurnY = burnY;
+    }
+    // Process shedding: fade out segments whose time has come, then remove.
+    const now = Date.now();
+    for (let i = ashSegments.length - 1; i >= 0; i--){
+      const s = ashSegments[i];
+      if (!s.shedding && now >= s.shedAt){
+        s.shedding = true;
+        s.el.style.opacity = '0';
+        // remove from DOM after the fade completes
+        setTimeout(()=>{ if (s.el && s.el.parentNode) s.el.parentNode.removeChild(s.el); }, 2700);
+        ashSegments.splice(i, 1);
+      }
+    }
+  }
+
   function incenseAvailable(){
     // True only if the current plan has a sitting of at least five minutes.
     const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
@@ -1118,7 +1174,7 @@
   function drawProgress(instant){
     const phase = plan[phaseIdx];
     const frac = phase.sec ? (phase.sec - phaseRemain)/phase.sec : 0; // 0→1 elapsed
-    const animated = [el('progRing'), el('sandTop'), el('sandBot'), el('incStick'), el('incAsh'), el('incEmber')];
+    const animated = [el('progRing'), el('sandTop'), el('sandBot'), el('incStick'), el('incEmber')];
     if (instant) {
       // Suppress transitions for this draw so a phase reset snaps to its start
       // state instead of animating backward from the previous phase's end.
@@ -1153,16 +1209,17 @@
        Q60 ${botTopY - mound} 104 ${botTopY}
        L104 166 Z`);
     el('sandStream').style.opacity = (frac > 0 && frac < 1 && !paused) ? '0.7' : '0';
-    // Incense: the burn front descends as the stick is consumed.
+    // Incense: the ember descends steadily (the clock). Ash builds above it as
+    // segments that shed irregularly, handled in updateAsh.
     const yTop = 40, yBot = 152, fullLen = yBot - yTop; // 112
     const burnY = yTop + fullLen * frac;
-    const stick = el('incStick'), ash = el('incAsh'), ember = el('incEmber'), smoke = el('incSmoke');
+    const stick = el('incStick'), ember = el('incEmber'), smoke = el('incSmoke');
     stick.setAttribute('y', String(burnY));
     stick.setAttribute('height', String(Math.max(0, yBot - burnY)));
-    ash.setAttribute('y', String(yTop));
-    ash.setAttribute('height', String(Math.max(0, burnY - yTop)));
     ember.setAttribute('cy', String(burnY));
     ember.style.opacity = (frac < 1) ? '1' : '0';
+    const incRunning = (frac > 0 && frac < 1 && !paused && activeDisplay === 'incense');
+    updateAsh(burnY, incRunning);
     smoke.setAttribute('transform', `translate(0, ${burnY - 40})`);
     smoke.style.display = (frac > 0 && frac < 1 && !paused) ? 'block' : 'none';
     if (instant) {
@@ -1377,6 +1434,7 @@
 
   // init: paint immediately with empty caches, then re-render once the
   // persistent store has loaded.
+  try { el('versionMark').textContent = 'v' + APP_VERSION + ' · standalone'; } catch(e){}
   renderHome();
   initStorage();
 })();

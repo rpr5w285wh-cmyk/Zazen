@@ -1,6 +1,9 @@
 // Service worker for the Just Sitting zazen app.
 // Caches the app shell so it loads fully offline once visited.
-const CACHE = 'zazen-v10';
+// The cache name tracks the version passed by the page as ?v=NN, so each app
+// update creates a fresh cache and old ones are cleared on activate.
+const VERSION = new URL(location).searchParams.get('v') || '0';
+const CACHE = 'zazen-v' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', e => {
