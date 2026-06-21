@@ -65,6 +65,8 @@
   .screen.active { display: flex; }
   /* Settings can exceed the viewport (vow editor); let it scroll internally. */
   #settings.active { max-height: calc(100dvh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+  #closing.active { max-height: calc(100dvh - 90px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 0 24px; justify-content: center; min-height: calc(100dvh - 90px); }
+  #closing.active.glyph-overflow { overflow: visible; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
   /* ---- Home ---- */
@@ -141,12 +143,7 @@
   #incStick { transition: y 0.95s linear, height 0.95s linear; }
   #incEmber { transition: cy 0.95s linear; }
   .ash-seg { transition: opacity 2.5s ease; }
-  #incSmoke { animation: smoke 5s ease-in-out infinite; transform-origin: 60px 36px; }
-  @keyframes smoke {
-    0%   { opacity: 0; }
-    30%  { opacity: 0.35; }
-    100% { opacity: 0; transform: translateY(-10px) scaleY(1.3); }
-  }
+  .smoke-puff { transition: opacity 3s ease, transform 3s ease-out; pointer-events: none; }
   .hourglass .glass { fill: none; stroke: var(--ink-dim); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; opacity: 0.5; }
   .hourglass .cap { fill: var(--ink-faint); opacity: 0.55; }
   .hourglass .post { stroke: var(--ink-faint); stroke-width: 1.4; opacity: 0.3; }
@@ -162,11 +159,28 @@
   .controls button:hover { color: var(--ink-dim); }
 
   /* ---- Closing ---- */
-  .vow { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.25rem; line-height: 2; color: var(--ink-dim); text-align: center; margin-bottom: 40px; }
-  .vow span { display: block; text-wrap: balance; opacity: 0; animation: rise 2s ease forwards; }
+  /* Phase A: the morphing glyph with a caption below it (one pass). */
+  .glyph-stage { text-align: center; transition: opacity 1.6s ease; margin-top: -3vh; }
+  .glyph-stage.fade-out { opacity: 0; }
+  .glyph-stage.gone { display: none; }
+  .glyph-wrap { width: 132px; height: 132px; margin: 0 auto; opacity: 0; animation: glyphIn 2.4s ease 0.6s forwards; }
+  #closeGlyph { width: 100%; height: 100%; overflow: visible; display: block; }
+  #cgPath, #cgDoorLeaf, #cgHorizon, .cg-edge { fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(205,189,157,0.35)); opacity: 0.85; }
+  .cg-emph { stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(205,189,157,0.3)); }
+  #cgDot { fill: var(--ember); filter: drop-shadow(0 0 6px var(--glow)); opacity: 0; }
+  .glyph-caption { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.6rem; line-height: 1.45; color: var(--ink-dim); text-align: center; max-width: 480px; margin: 4px auto 0; min-height: 3em; text-wrap: balance; transition: opacity 1s ease; }
+  @keyframes glyphIn { from { opacity: 0; } to { opacity: 1; } }
+  /* Phase B: the static stack of all four vows, revealed at the end. */
+  .vow-final { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.35rem; line-height: 1.5; color: var(--ink-dim); text-align: center; margin-bottom: 24px; display: none; }
+  .vow-final.show { display: block; }
+  .vow-final .vow-line { display: block; text-wrap: balance; opacity: 0; margin-bottom: 16px; }
+  .vow-final.show .vow-line { animation: rise 2s ease forwards; }
+  .sit-summary-wrap { display: none; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .vow { color: var(--ink); }
-  .sit-summary { color: var(--ink-dim); font-style: italic; font-size: 0.95rem; text-wrap: balance; margin-bottom: 36px; text-align: center; line-height: 1.7; opacity: 0; animation: rise 1.4s ease 12.5s forwards; }
+  .sit-summary { color: var(--ink-dim); font-style: italic; font-size: 0.95rem; text-wrap: balance; margin-bottom: 20px; text-align: center; line-height: 1.7; opacity: 0; transition: opacity 1.4s ease; }
+  .sit-summary.show { opacity: 1; }
+  #closeReturn { opacity: 0; transition: opacity 1s ease; pointer-events: none; }
+  #closeReturn.show { opacity: 1; pointer-events: auto; }
 
   /* ---- Log ---- */
   .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
@@ -292,8 +306,8 @@
         <g id="incAshGroup"></g>
         <!-- glowing ember at the burn front -->
         <circle id="incEmber" cx="60" cy="40" r="4" fill="var(--ember)"></circle>
-        <!-- rising smoke -->
-        <path id="incSmoke" d="M60 36 q-6 -14 2 -26 q6 -10 -2 -22" fill="none" stroke="var(--ink-dim)" stroke-width="1.4" stroke-linecap="round" opacity="0.0"></path>
+        <!-- rising smoke: irregular puffs spawned from the ember in JS -->
+        <g id="incSmokeGroup"></g>
       </svg>
     </div>
     <div class="controls">
@@ -306,9 +320,28 @@
 
   <!-- CLOSING -->
   <section class="screen" id="closing">
-    <div class="vow" id="vowBlock"></div>
+    <div class="glyph-stage" id="glyphStage">
+      <div class="glyph-wrap" id="glyphWrap">
+        <svg id="closeGlyph" viewBox="0 0 100 100" aria-hidden="true">
+          <line class="cg-emph" id="cgE1" x1="28" y1="32" x2="36" y2="38"/>
+          <line class="cg-emph" id="cgE2" x1="72" y1="32" x2="64" y2="38"/>
+          <line class="cg-emph" id="cgE3" x1="30" y1="62" x2="38" y2="57"/>
+          <line class="cg-emph" id="cgE4" x1="70" y1="62" x2="62" y2="57"/>
+          <path id="cgPath" d=""></path>
+          <path id="cgDoorLeaf" d="" opacity="0"></path>
+          <line id="cgFrameTop" class="cg-edge" x1="36" y1="20" x2="64" y2="20" opacity="0"/>
+          <line id="cgFrameBot" class="cg-edge" x1="36" y1="82" x2="64" y2="82" opacity="0"/>
+          <line id="cgFrameL" class="cg-edge" x1="36" y1="20" x2="36" y2="82" opacity="0"/>
+          <line id="cgFrameR" class="cg-edge" x1="64" y1="20" x2="64" y2="82" opacity="0"/>
+          <line id="cgHorizon" x1="18" y1="50" x2="82" y2="50" opacity="0"/>
+          <circle id="cgDot" cx="50" cy="50" r="0" opacity="0"></circle>
+        </svg>
+      </div>
+      <div class="glyph-caption" id="glyphCaption"></div>
+    </div>
+    <div class="vow-final" id="vowFinal"></div>
     <div class="sit-summary" id="sitSummary"></div>
-    <button class="ghost-link" id="closeReturn" style="opacity:0; animation: rise 1s ease 14s forwards;">return</button>
+    <button class="ghost-link" id="closeReturn">return</button>
   </section>
 
   <!-- LOG -->
@@ -327,7 +360,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '11';
+  const APP_VERSION = '22';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -625,17 +658,343 @@
     if (!vowsCache){ vowsCache = PERSONAL_VOWS.slice(); sSet(VOW_KEY, JSON.stringify(vowsCache)); }
     renderHome();
   }
-  function renderVows(){
-    const block = el('vowBlock');
-    const vows = loadVows();
-    block.innerHTML = '';
-    vows.forEach((line, i)=>{
-      const s = document.createElement('span');
-      s.textContent = line;
-      s.style.animationDelay = (1.2 + i * 2.8) + 's';
-      block.appendChild(s);
-    });
+  // Four semi-abstract glyphs, one per vow slot (by position, not text, so they
+  // hold even if the vow wording is personalized). Line art with ember glow,
+  // each in continuous slow motion via CSS.
+  // The closing glyph is a single continuous morphing symbol (bolt -> heart ->
+  // door -> path), animated by startCloseGlyph() below. No per-vow glyphs.
+
+  // Break a vow at its semicolon onto two lines, keeping the semicolon.
+  function vowHTML(line){
+    const parts = line.split(';');
+    if (parts.length === 2) return parts[0].trim() + ';<br>' + parts[1].trim();
+    return line;
   }
+
+  function renderVows(){
+    const final = el('vowFinal');
+    const vows = loadVows();
+    // Pre-build the static four-vow stack (hidden until the glyph pass ends).
+    final.classList.remove('show');
+    final.innerHTML = '';
+    vows.forEach((line, i)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'vow-line';
+      wrap.innerHTML = vowHTML(line);
+      wrap.style.animationDelay = (i * 0.7) + 's';
+      final.appendChild(wrap);
+    });
+    // Reset summary/return to hidden; they appear after the vows resolve.
+    el('sitSummary').classList.remove('show');
+    el('closeReturn').classList.remove('show');
+    // Glyph stage visible again (in case of a prior sitting this session).
+    el('glyphStage').classList.remove('fade-out');
+    el('glyphStage').classList.remove('gone');
+    el('closing').classList.remove('glyph-overflow');
+    startCloseGlyph(vows);
+  }
+
+  // ---------- Closing glyph: one continuous morphing symbol ----------
+  // bolt (pain) -> heart (coming back) -> door (the doorway) -> path (the way).
+  // The first pass is paced to the four vows rising in; then it loops freely.
+  const VOW_STEP = 4.0;   // (retained) seconds between vow beats, for reference
+  let cgRAF = null;
+
+  function startCloseGlyph(vows){
+    const path = el('cgPath'), doorLeaf = el('cgDoorLeaf');
+    const frameTop = el('cgFrameTop'), frameBot = el('cgFrameBot');
+    const frameL = el('cgFrameL'), frameR = el('cgFrameR');
+    const horizon = el('cgHorizon'), dot = el('cgDot');
+    const caption = el('glyphCaption');
+    const emph = ['cgE1','cgE2','cgE3','cgE4'].map(id=>el(id));
+    if (!path) return;
+    // Captions shown below the glyph, one per state, broken at the semicolon.
+    const CAP = (vows && vows.length===4) ? vows.slice() : loadVows();
+    let lastCap = '';
+    function setCap(s){ if(s!==lastCap){ caption.innerHTML = vowHTML(s); lastCap=s; } }
+    const EMPH_BASE = emph.map(e=>({
+      x1:+e.getAttribute('x1'), y1:+e.getAttribute('y1'),
+      x2:+e.getAttribute('x2'), y2:+e.getAttribute('y2')
+    }));
+
+    const N = 64;
+    const lerp = (a,b,t)=>a+(b-a)*t;
+    const ease = t=> t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+    function resample(poly, n){
+      let segs=[], total=0;
+      for(let i=0;i<poly.length-1;i++){ const dx=poly[i+1][0]-poly[i][0], dy=poly[i+1][1]-poly[i][1]; const L=Math.hypot(dx,dy); segs.push(L); total+=L; }
+      const out=[], step=total/n;
+      for(let k=0;k<n;k++){
+        const target=k*step; let run=0, idx=0;
+        for(idx=0; idx<segs.length; idx++){ if(run+segs[idx]>=target) break; run+=segs[idx]; }
+        idx=Math.min(idx,segs.length-1);
+        const f=(segs[idx]===0)?0:(target-run)/segs[idx];
+        out.push([ lerp(poly[idx][0],poly[idx+1][0],f), lerp(poly[idx][1],poly[idx+1][1],f) ]);
+      }
+      return out;
+    }
+    function heartPts(){
+      const pts=[];
+      for(let i=0;i<N;i++){
+        const t=Math.PI - (i/N)*Math.PI*2;
+        const x=16*Math.pow(Math.sin(t),3);
+        const y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+        pts.push([50 + x*1.7, 50 - y*1.7 + 6]);
+      }
+      return pts;
+    }
+    function boltPts(){ return resample([[52,18],[44,46],[54,44],[46,82],[50,50],[42,52],[52,18]], N); }
+    function doorPts(){ return resample([[36,20],[64,20],[64,82],[36,82],[36,20]], N); }
+    function align(a,b){
+      let best=0,bestD=Infinity;
+      for(let off=0; off<N; off+=2){
+        let d=0; for(let i=0;i<N;i+=4){ const j=(i+off)%N; d+=Math.hypot(a[i][0]-b[j][0],a[i][1]-b[j][1]); }
+        if(d<bestD){bestD=d;best=off;}
+      }
+      const rot=[]; for(let i=0;i<N;i++) rot.push(b[(i+best)%N]); return rot;
+    }
+    function ptsToPath(pts){
+      let d=`M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)} `;
+      for(let i=1;i<pts.length;i++) d+=`L ${pts[i][0].toFixed(2)} ${pts[i][1].toFixed(2)} `;
+      return d+'Z';
+    }
+    function morph(a,b,t){ const o=[]; for(let i=0;i<N;i++) o.push([lerp(a[i][0],b[i][0],t), lerp(a[i][1],b[i][1],t)]); return o; }
+
+    const BOLT = boltPts();
+    const HEART = align(BOLT, heartPts());
+    const DOOR = align(HEART, doorPts());
+    const HOME = {x:50,y:54};
+
+    const T = {
+      painHold:1500, toHeart:3200, heartHold:7600, toDoor:2600, doorOpen:2400,
+      through:2100, beginXform:1500, horizonDraw:1700, toPath:2200,
+      pathFade:1600, foreverLine:2200, pathHold:900
+    };
+    const total = T.painHold+T.toHeart+T.heartHold+T.toDoor+T.doorOpen+T.through+T.beginXform+T.horizonDraw+T.toPath+T.pathFade+T.foreverLine+T.pathHold;
+
+    function setEmph(o){ emph.forEach(e=>e.style.opacity=o); }
+    function setDot(o,r){ dot.style.opacity=o; dot.setAttribute('r', r); }
+    function setVerticals(g){
+      const lx=36, rx=64, by=82, vy=50;
+      frameL.setAttribute('x1',lx); frameL.setAttribute('y1',by);
+      frameL.setAttribute('x2',lerp(lx,50,g).toFixed(2)); frameL.setAttribute('y2',lerp(20,vy,g).toFixed(2));
+      frameR.setAttribute('x1',rx); frameR.setAttribute('y1',by);
+      frameR.setAttribute('x2',lerp(rx,50,g).toFixed(2)); frameR.setAttribute('y2',lerp(20,vy,g).toFixed(2));
+    }
+    // Straighten the converged path (a V meeting at the vanishing point) into a
+    // single vertical line that runs off-screen top and bottom. p: 0 = converged
+    // path, 1 = full vertical line through x=50 from above to below the frame.
+    function setForeverLine(p){
+      const lx=36, rx=64, by=82, vy=50;
+      // The two converged path lines (a V apex at the top, legs down to the base
+      // corners) straighten into a single vertical line at x=50. The line's top
+      // travels far up and off-screen; the bottom settles just below center. Both
+      // lines end colinear at x=50, reading as one continuous line.
+      const topY = lerp(vy, -260, p);       // far above the screen
+      const botY = lerp(by, 64, p);          // settle just below center
+      const lBx = lerp(lx, 50, p);
+      const rBx = lerp(rx, 50, p);
+      frameL.setAttribute('x1', lBx.toFixed(2)); frameL.setAttribute('y1', botY.toFixed(2));
+      frameL.setAttribute('x2', '50');            frameL.setAttribute('y2', topY.toFixed(2));
+      frameR.setAttribute('x1', rBx.toFixed(2)); frameR.setAttribute('y1', botY.toFixed(2));
+      frameR.setAttribute('x2', '50');            frameR.setAttribute('y2', topY.toFixed(2));
+    }
+
+    function render(c){
+      let acc=0;
+      // PAIN hold (vow 1) — emphasis lines sway/pulse
+        setCap(CAP[0]);
+      if(c < (acc+=T.painHold)){
+        path.style.opacity=1;
+        const wig=Math.sin(c/220), pulse=0.55+0.45*Math.abs(Math.sin(c/520));
+        path.setAttribute('d', ptsToPath(BOLT));
+        path.setAttribute('transform', `translate(${(wig*0.5).toFixed(2)} 0)`);
+        EMPH_BASE.forEach((b,i)=>{
+          const e=emph[i], jx=Math.sin(c/200+i*1.7)*1.1, jy=Math.cos(c/240+i*2.1)*1.1;
+          e.setAttribute('x1',(b.x1+jx).toFixed(2)); e.setAttribute('y1',(b.y1+jy).toFixed(2));
+          e.setAttribute('x2',(b.x2+jx*1.2).toFixed(2)); e.setAttribute('y2',(b.y2+jy*1.2).toFixed(2));
+          e.style.opacity=pulse.toFixed(2);
+        });
+        setDot(0,0); horizon.style.opacity=0; doorLeaf.style.opacity=0;
+        [frameTop,frameBot,frameL,frameR].forEach(f=>f.style.opacity=0);
+        return;
+      }
+      // morph PAIN -> HEART (still vow 1): pain becomes the heart
+        setCap(CAP[0]);
+      if(c < (acc+=T.toHeart)){
+        const t=ease((c-(acc-T.toHeart))/T.toHeart);
+        path.setAttribute('transform','translate(0 0)');
+        path.setAttribute('d', ptsToPath(morph(BOLT,HEART,t)));
+        setEmph((1-t).toFixed(2));
+        setDot(t.toFixed(2), (3.2*t).toFixed(2));
+        dot.setAttribute('cx',HOME.x); dot.setAttribute('cy',HOME.y);
+        return;
+      }
+      // HEART hold (vow 2) — exactly three excursions outside, then rest center
+        setCap(CAP[1]);
+      if(c < (acc+=T.heartHold)){
+        path.setAttribute('d', ptsToPath(HEART));
+        setEmph(0); setDot(1,3.2);
+        const localT=c-(acc-T.heartHold), pre=600, excDur=2050;
+        const DIRS=[
+          {x:50+Math.cos(-2.3)*42, y:54+Math.sin(-2.3)*38},
+          {x:50+Math.cos(-0.2)*44, y:54+Math.sin(-0.2)*38},
+          {x:50+Math.cos(1.5)*40,  y:54+Math.sin(1.5)*36},
+        ];
+        let px=HOME.x, py=HOME.y;
+        if(localT<pre){ px=HOME.x; py=HOME.y; }
+        else if(localT<pre+excDur*3){
+          const idx=Math.floor((localT-pre)/excDur), within=((localT-pre)%excDur)/excDur, tgt=DIRS[Math.min(idx,2)];
+          let e; if(within<0.5){ e=ease(within/0.5); px=lerp(HOME.x,tgt.x,e); py=lerp(HOME.y,tgt.y,e); }
+          else { e=ease((within-0.5)/0.5); px=lerp(tgt.x,HOME.x,e); py=lerp(tgt.y,HOME.y,e); }
+        } else { px=HOME.x; py=HOME.y; }
+        dot.setAttribute('cx',px.toFixed(2)); dot.setAttribute('cy',py.toFixed(2));
+        return;
+      }
+      // morph HEART -> DOOR (vow 3): dot moves straight down below the door
+        setCap(CAP[2]);
+      if(c < (acc+=T.toDoor)){
+        const t=ease((c-(acc-T.toDoor))/T.toDoor);
+        path.setAttribute('d', ptsToPath(morph(HEART,DOOR,t)));
+        dot.setAttribute('cx',lerp(HOME.x,50,t).toFixed(2)); dot.setAttribute('cy',lerp(HOME.y,92,t).toFixed(2));
+        setDot(1,3.2); doorLeaf.style.opacity=0; horizon.style.opacity=0;
+        return;
+      }
+      // DOOR opens (vow 3) — leaf hinged left swings back; dot waits below
+        setCap(CAP[2]);
+      if(c < (acc+=T.doorOpen)){
+        const t=ease((c-(acc-T.doorOpen))/T.doorOpen);
+        path.setAttribute('d', ptsToPath(DOOR));
+        const lx=36, rx=64, ty=20, by=82, freeX=lerp(rx,lx+7,t);
+        doorLeaf.style.opacity=1;
+        doorLeaf.setAttribute('d', `M ${lx} ${ty} L ${freeX} ${lerp(ty,ty+6,t)} L ${freeX} ${lerp(by,by-6,t)} L ${lx} ${by}`);
+        dot.setAttribute('cx','50'); dot.setAttribute('cy','92'); setDot(1,3.2);
+        horizon.style.opacity=0;
+        return;
+      }
+      // dot CURVES THROUGH the open doorway to the horizon spot (vow 3->4)
+        setCap(CAP[2]);
+      if(c < (acc+=T.through)){
+        const t=ease((c-(acc-T.through))/T.through);
+        path.setAttribute('d', ptsToPath(DOOR));
+        doorLeaf.style.opacity=1;
+        doorLeaf.setAttribute('d', `M 36 20 L 43 26 L 43 76 L 36 82`);
+        const p0={x:50,y:92}, p1={x:58,y:64}, p2={x:50,y:50};
+        const x=lerp(lerp(p0.x,p1.x,t),lerp(p1.x,p2.x,t),t);
+        const y=lerp(lerp(p0.y,p1.y,t),lerp(p1.y,p2.y,t),t);
+        dot.setAttribute('cx',x.toFixed(2)); dot.setAttribute('cy',y.toFixed(2)); setDot(1,3.2);
+        horizon.style.opacity=0;
+        return;
+      }
+      // ending: convergence driven by one continuous global progress (vow 4)
+        setCap(CAP[3]);
+      const CONV_START=acc, CONV_DUR=T.beginXform+T.horizonDraw+T.toPath;
+      if(c < (acc+=T.beginXform)){
+        const t=ease((c-(acc-T.beginXform))/T.beginXform), g=ease((c-CONV_START)/CONV_DUR);
+        path.style.opacity=0;
+        [frameTop,frameBot,frameL,frameR].forEach(f=>f.style.opacity=1);
+        frameTop.setAttribute('x1','36'); frameTop.setAttribute('y1','20'); frameTop.setAttribute('x2','64'); frameTop.setAttribute('y2','20');
+        frameBot.setAttribute('x1','36'); frameBot.setAttribute('y1','82'); frameBot.setAttribute('x2','64'); frameBot.setAttribute('y2','82');
+        doorLeaf.style.opacity=(1-t).toFixed(2);
+        frameTop.style.opacity=(1-t*0.7).toFixed(2); frameBot.style.opacity=(1-t*0.7).toFixed(2);
+        setVerticals(g); horizon.style.opacity=0;
+        dot.setAttribute('cx','50'); dot.setAttribute('cy','50'); setDot(1,3.0);
+        return;
+      }
+      if(c < (acc+=T.horizonDraw)){
+        const t=ease((c-(acc-T.horizonDraw))/T.horizonDraw), g=ease((c-CONV_START)/CONV_DUR);
+        doorLeaf.style.opacity=0;
+        frameTop.style.opacity=(0.3*(1-t)).toFixed(2); frameBot.style.opacity=(0.3*(1-t)).toFixed(2);
+        frameL.style.opacity=1; frameR.style.opacity=1;
+        setVerticals(g);
+        horizon.setAttribute('x1','18'); horizon.setAttribute('y1','50'); horizon.setAttribute('x2',lerp(18,82,t).toFixed(1)); horizon.setAttribute('y2','50');
+        horizon.style.opacity=0.6;
+        dot.setAttribute('cx','50'); dot.setAttribute('cy','50'); setDot(1,3.0);
+        return;
+      }
+      if(c < (acc+=T.toPath)){
+        const g=ease((c-CONV_START)/CONV_DUR);
+        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        frameL.style.opacity=1; frameR.style.opacity=1;
+        setVerticals(g); horizon.style.opacity=0.6;
+        dot.setAttribute('cx','50'); dot.setAttribute('cy','50'); setDot(1,3.0);
+        return;
+      }
+      // PATH FADE — the dot and horizon fade away, leaving the two path lines.
+      if(c < (acc+=T.pathFade)){
+        setCap(CAP[3]);
+        const t=ease((c-(acc-T.pathFade))/T.pathFade);
+        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        frameL.style.opacity=1; frameR.style.opacity=1;
+        setVerticals(1);
+        horizon.style.opacity=(0.6*(1-t)).toFixed(2);
+        dot.setAttribute('cx','50'); dot.setAttribute('cy','50'); dot.style.opacity=(1-t).toFixed(2); dot.setAttribute('r','3.0');
+        return;
+      }
+      // FOREVER LINE — the two path lines straighten into a single vertical line
+      // that rises up and off the top of the screen (the way, without end).
+      if(c < (acc+=T.foreverLine)){
+        setCap(CAP[3]);
+        const t=ease((c-(acc-T.foreverLine))/T.foreverLine);
+        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        horizon.style.opacity=0; setDot(0,0);
+        frameL.style.opacity=1; frameR.style.opacity=1;
+        setForeverLine(t);
+        el('closing').classList.add('glyph-overflow');   // let the line escape
+        return;
+      }
+      // PATH HOLD — hold the forever line briefly; the whole glyph + caption then
+      // dissolve together via the stage's CSS opacity fade (resolveToVows).
+      {
+        setCap(CAP[3]);
+        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        frameL.style.opacity=1; frameR.style.opacity=1;
+        horizon.style.opacity=0; setDot(0,0);
+        setForeverLine(1);
+        el('closing').classList.add('glyph-overflow');
+      }
+    }
+
+    // Drive by wall clock (survives throttling). Runs ONE pass, then resolves
+    // to the static four-vow display, followed by the summary and return.
+    const start = performance.now();
+    function loop(now){
+      const c = now - start;
+      if (c < total){
+        render(c);
+        cgRAF = requestAnimationFrame(loop);
+      } else {
+        render(total - 1);          // hold final frame
+        cgRAF = null;
+        resolveToVows();            // begin Phase B
+      }
+    }
+    cancelAnimationFrame(cgRAF);
+    path.setAttribute('d', ptsToPath(BOLT));
+    cgRAF = requestAnimationFrame(loop);
+    // Testing mode: surface the return link early so you needn't wait out the
+    // whole pass on every test. The glyph still plays and resolves normally.
+    if (testingMode){
+      setTimeout(()=>{ if(cgRAF) el('closeReturn').classList.add('show'); }, 2500);
+    }
+
+    // Phase B: fade the glyph + caption away, reveal the four vows, then the
+    // summary, then the return link — the calm resting state the closing had
+    // before the glyph existed.
+    function resolveToVows(){
+      const stage = el('glyphStage'), final = el('vowFinal');
+      stage.classList.add('fade-out');
+      el('closing').classList.remove('glyph-overflow');
+      setTimeout(()=>{
+        stage.classList.add('gone');           // collapse so vows truly center
+        final.classList.add('show');           // four vows rise in turn
+        setTimeout(()=> el('sitSummary').classList.add('show'), 4000);
+        setTimeout(()=> el('closeReturn').classList.add('show'), 5200);
+      }, 1500);
+    }
+  }
+
+  function stopCloseGlyph(){ if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; } }
 
   // ---------- Progression: depth unlocked by accumulated sits ----------
   // Each stage defines the guidance + a default structure.
@@ -731,7 +1090,7 @@
   // ---------- Elements ----------
   const el = id => document.getElementById(id);
   const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), log: el('log'), settings: el('settings') };
-  function show(name) { Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+  function show(name) { if(name!=='closing') stopCloseGlyph(); Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
 
   // ---------- Home rendering ----------
   function fmtMin(sec){ return Math.round(sec/60); }
@@ -1106,6 +1465,45 @@
     ashSegments = [];
     ashLastBurnY = ASH_TOP;
     ashSessionStart = Date.now();
+    // also reset smoke
+    const sg = el('incSmokeGroup');
+    if (sg) sg.innerHTML = '';
+    nextPuffAt = 0;
+  }
+
+  // ---- Incense smoke: puffs rise from the ember at irregular intervals ----
+  let nextPuffAt = 0;
+  function updateSmoke(burnY, running){
+    const sg = el('incSmokeGroup');
+    if (!sg) return;
+    const now = Date.now();
+    if (!running) return;
+    if (nextPuffAt === 0) nextPuffAt = now + 1500 + Math.random() * 2000;
+    if (now >= nextPuffAt){
+      // One graceful wisp, the original S-curl shape, rising from the ember's
+      // current position. Irregular timing, not a fixed loop.
+      const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+      p.setAttribute('class','smoke-puff');
+      // original curl: two opposing quadratic curves, drawn relative to the ember.
+      // a small random mirror so successive wisps aren't identical.
+      const m = Math.random() < 0.5 ? 1 : -1;
+      const top = burnY - 4;
+      p.setAttribute('d', `M60 ${top} q${-6*m} -14 ${2*m} -26 q${6*m} -10 ${-2*m} -22`);
+      p.setAttribute('fill','none');
+      p.setAttribute('stroke','var(--ink-dim)');
+      p.setAttribute('stroke-width','1.4');
+      p.setAttribute('stroke-linecap','round');
+      p.setAttribute('opacity','0');
+      sg.appendChild(p);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        p.style.opacity = '0.32';
+        p.style.transform = `translateY(-12px) scaleY(1.25)`;
+        p.style.transformBox = 'fill-box';
+        setTimeout(()=>{ p.style.opacity = '0'; }, 1000);
+      }));
+      setTimeout(()=>{ if (p.parentNode) p.parentNode.removeChild(p); }, 3200);
+      nextPuffAt = now + 4000 + Math.random() * 3000;
+    }
   }
   function updateAsh(burnY, running){
     const g = el('incAshGroup');
@@ -1213,15 +1611,14 @@
     // segments that shed irregularly, handled in updateAsh.
     const yTop = 40, yBot = 152, fullLen = yBot - yTop; // 112
     const burnY = yTop + fullLen * frac;
-    const stick = el('incStick'), ember = el('incEmber'), smoke = el('incSmoke');
+    const stick = el('incStick'), ember = el('incEmber');
     stick.setAttribute('y', String(burnY));
     stick.setAttribute('height', String(Math.max(0, yBot - burnY)));
     ember.setAttribute('cy', String(burnY));
     ember.style.opacity = (frac < 1) ? '1' : '0';
     const incRunning = (frac > 0 && frac < 1 && !paused && activeDisplay === 'incense');
     updateAsh(burnY, incRunning);
-    smoke.setAttribute('transform', `translate(0, ${burnY - 40})`);
-    smoke.style.display = (frac > 0 && frac < 1 && !paused) ? 'block' : 'none';
+    updateSmoke(burnY, incRunning);
     if (instant) {
       // Re-enable transitions on the next frame so subsequent ticks animate.
       void el('progRing').offsetWidth; // force reflow so the 'none' is committed
