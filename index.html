@@ -139,6 +139,20 @@
   .hourglass { position: absolute; width: 124px; height: 180px; }
 
   .incense { position: absolute; width: 130px; height: 200px; }
+  /* Kyōsaku gasshō: hidden until the ceremony; fades in, inclines (the bow),
+     rises and fades back to the timer display. */
+  .gassho { position: absolute; width: 150px; height: 150px; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
+  .gassho.show { opacity: 1; }
+  .gassho .flame-edge { fill: none; stroke: var(--ember); stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 7px var(--glow)); }
+  .gassho .flame-fill { fill: var(--ember); opacity: 0.10; stroke: none; }
+  .gassho .flame-core { fill: none; stroke: var(--ember); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
+  .gassho .flame-halo { fill: var(--ember); opacity: 0.14; stroke: none; }
+  /* idle flicker so the flame seems lit while you sit */
+  @keyframes flameFlick { 0%,100%{ transform: translateX(0) scaleY(1); } 25%{ transform: translateX(0.6px) scaleY(1.02);} 50%{ transform: translateX(-0.5px) scaleY(0.99);} 75%{ transform: translateX(0.3px) scaleY(1.01);} }
+  #flameFlicker { transform-origin: 50px 68px; animation: flameFlick 3.2s ease-in-out infinite; }
+  /* the bow: the flame gutters/bends low, then draws back up */
+  #gasshoInner { transform-origin: 50px 70px; transition: transform 1.4s cubic-bezier(0.4,0,0.3,1); }
+  .gassho.bow #gasshoInner { transform: scaleY(0.55) translateY(18px); }
   #incEmber { filter: drop-shadow(0 0 6px var(--glow)); }
   #incStick { transition: y 0.95s linear, height 0.95s linear; }
   #incEmber { transition: cy 0.95s linear; }
@@ -150,6 +164,8 @@
   .hourglass #sandTop, .hourglass #sandBot { transition: d 0.95s linear; }
   #sandStream { transition: opacity 0.4s; }
   .disp-hidden { display: none !important; }
+  .ring, .hourglass, .incense { transition: opacity 1s ease; }
+  .ceremony-dim { opacity: 0 !important; }
 
   .controls button#cycleBtn { font-size: 1.1rem; letter-spacing: 0; padding: 12px 10px; }
 
@@ -163,7 +179,8 @@
   .glyph-stage { text-align: center; transition: opacity 1.6s ease; margin-top: -3vh; }
   .glyph-stage.fade-out { opacity: 0; }
   .glyph-stage.gone { display: none; }
-  .glyph-wrap { width: 132px; height: 132px; margin: 0 auto; opacity: 0; animation: glyphIn 2.4s ease 0.6s forwards; }
+  .glyph-wrap { width: 132px; height: 132px; margin: 0 auto; opacity: 0; }
+  .glyph-wrap.begin { animation: glyphIn 2.4s ease forwards; }
   #closeGlyph { width: 100%; height: 100%; overflow: visible; display: block; }
   #cgPath, #cgDoorLeaf, #cgHorizon, .cg-edge { fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(205,189,157,0.35)); opacity: 0.85; }
   .cg-emph { stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(205,189,157,0.3)); }
@@ -227,6 +244,11 @@
     <div class="setting-block">
       <button class="toggle-row" id="addPastSit"><span class="tog-label">Mark a past sitting</span><span class="tog-state" id="pastSitState"></span></button>
       <div class="setting-note">Adds one sitting to the record, for sits lost to a reset or done away from the app.</div>
+    </div>
+    <div class="setting-block">
+      <div class="tog-label" style="margin-bottom:10px;">Fixed sitting length</div>
+      <div class="setting-note" style="margin-bottom:14px;">Hold one length each day and let the progression rest. Choose a length to keep it fixed, or Off to follow the unfolding stages.</div>
+      <div class="adjust" id="fixedRow" style="margin-bottom:0;"></div>
     </div>
     <div class="setting-block">
       <div class="tog-label" style="margin-bottom:10px;">The vows</div>
@@ -309,6 +331,18 @@
         <!-- rising smoke: irregular puffs spawned from the ember in JS -->
         <g id="incSmokeGroup"></g>
       </svg>
+      <!-- Kyōsaku ceremony: a candle flame that bows. Overlays the timer display
+           during the request-bow-strike exchange. -->
+      <svg class="gassho" id="gasshoGlyph" viewBox="0 0 100 100" aria-hidden="true">
+        <g id="gasshoInner">
+          <g id="flameFlicker">
+            <ellipse class="flame-halo" cx="50" cy="62" rx="11" ry="6"></ellipse>
+            <path class="flame-fill" d="M50 24 C 57 40, 58 54, 50 68 C 42 54, 43 40, 50 24 Z"></path>
+            <path class="flame-edge" d="M50 24 C 57 40, 58 54, 50 68 C 42 54, 43 40, 50 24 Z"></path>
+            <path class="flame-core" d="M50 40 C 53 48, 53 56, 50 64 C 47 56, 47 48, 50 40 Z"></path>
+          </g>
+        </g>
+      </svg>
     </div>
     <div class="controls">
       <button id="cycleBtn">⊙</button>
@@ -360,7 +394,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '22';
+  const APP_VERSION = '27';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -513,6 +547,37 @@
   }
 
   // ---- Taku / clappers: two hardwood blocks struck. A sharp, dry crack. ----
+  // The kyōsaku ("encouragement stick") strike: a single sharp, woody crack —
+  // harder and a touch lower than the taku clappers, so it reads as the stick.
+  function kyosaku(){
+    try {
+      ensureAudio();
+      const t = actx.currentTime;
+      const out = actx.createGain(); out.gain.value = 0.85;
+      out.connect(actx.destination);
+      // Sharp filtered-noise crack (the slap of wood on cloth/shoulder).
+      const len = 0.07;
+      const buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+      const noise = actx.createBufferSource(); noise.buffer = buf;
+      const bp = actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=1500; bp.Q.value=0.8;
+      const ng = actx.createGain();
+      ng.gain.setValueAtTime(0.9, t);
+      ng.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      noise.connect(bp); bp.connect(ng); ng.connect(out);
+      noise.start(t); noise.stop(t + len);
+      // Low woody body knock for weight.
+      const o = actx.createOscillator(); const g = actx.createGain();
+      o.type='triangle'; o.frequency.value = 620;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + 0.18);
+    } catch(e){}
+  }
+
   function taku(strikes = 1, gap = 0.5) {
     try {
       ensureAudio();
@@ -606,7 +671,9 @@
 
   // ---------- Storage (light: dates, durations, count) ----------
   const KEY = 'zazen.sessions.v1';
+  const FIXED_KEY = 'zazen.fixed.v1';   // fixed sitting length in minutes (0=off)
   let testingMode = false;   // when true, sittings are NOT recorded
+  let fixedMinutes = 0;      // 0 = follow the progression; >0 = fixed length
   // ---------- Persistence (standalone: localStorage is primary) ----------
   // In-memory caches keep the rest of the app synchronous; localStorage is the
   // durable store for a home-screen web app on a stable origin.
@@ -656,6 +723,8 @@
     const v = sGet(VOW_KEY);
     if (v){ try { const a = JSON.parse(v); if (Array.isArray(a) && a.length) vowsCache = a; } catch(e){} }
     if (!vowsCache){ vowsCache = PERSONAL_VOWS.slice(); sSet(VOW_KEY, JSON.stringify(vowsCache)); }
+    const fx = sGet(FIXED_KEY);
+    if (fx){ const n = parseInt(fx,10); if (!isNaN(n) && n>0) fixedMinutes = n; }
     renderHome();
   }
   // Four semi-abstract glyphs, one per vow slot (by position, not text, so they
@@ -691,14 +760,27 @@
     el('glyphStage').classList.remove('fade-out');
     el('glyphStage').classList.remove('gone');
     el('closing').classList.remove('glyph-overflow');
-    startCloseGlyph(vows);
+    // A quiet pause after the closing bell: time to breathe, bow, and reach for
+    // the phone before the flame and the vows begin. The screen stays dark and
+    // still until then. Testing mode keeps it short.
+    const wrap = el('glyphWrap');
+    wrap.classList.remove('begin');           // reset the fade-in
+    void wrap.offsetWidth;                     // reflow so re-adding re-triggers
+    if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); }
+    const pauseMs = testingMode ? 1500 : 9000;
+    closeGlyphTimer = setTimeout(()=>{
+      wrap.classList.add('begin');             // flame fades in
+      startCloseGlyph(vows);
+    }, pauseMs);
   }
+
 
   // ---------- Closing glyph: one continuous morphing symbol ----------
   // bolt (pain) -> heart (coming back) -> door (the doorway) -> path (the way).
   // The first pass is paced to the four vows rising in; then it loops freely.
   const VOW_STEP = 4.0;   // (retained) seconds between vow beats, for reference
   let cgRAF = null;
+  let closeGlyphTimer = null;
 
   function startCloseGlyph(vows){
     const path = el('cgPath'), doorLeaf = el('cgDoorLeaf');
@@ -994,7 +1076,7 @@
     }
   }
 
-  function stopCloseGlyph(){ if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; } }
+  function stopCloseGlyph(){ if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; } if(closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer=null; } }
 
   // ---------- Progression: depth unlocked by accumulated sits ----------
   // Each stage defines the guidance + a default structure.
@@ -1033,13 +1115,32 @@
       structure: [{type:'settle',sec:30},{type:'zazen',sec:600},{type:'kinhin',sec:180},{type:'zazen',sec:600}] },
   ];
 
+  // A stage built from a fixed chosen length, used when fixedMinutes > 0 so the
+  // app holds one length instead of advancing through the progression.
+  function fixedStage(){
+    const m = fixedMinutes;
+    const method = m <= 5 ? 'count' : (m <= 10 ? 'follow' : 'open');
+    const methodDesc = {
+      count:  `${m} ${m===1?'minute':'minutes'}. Count each exhalation, one through ten, and return whenever you drift.`,
+      follow: `${m} minutes. Let counting fall away; simply follow the breath as it moves.`,
+      open:   `${m} minutes. Just sitting. No object, no technique.`,
+    };
+    return {
+      min: 0, fixed: true, name: `${m} ${m===1?'Minute':'Minutes'}`,
+      desc: methodDesc[method], method,
+      structure: [{type:'settle',sec:25},{type:'zazen',sec:m*60}],
+    };
+  }
+
   function currentStage() {
+    if (fixedMinutes > 0) return fixedStage();
     const n = totalSits();
     let s = STAGES[0];
     for (const st of STAGES) if (n >= st.min) s = st;
     return s;
   }
   function nextStage() {
+    if (fixedMinutes > 0) return null;   // no "next" while a length is held
     const n = totalSits();
     for (const st of STAGES) if (n < st.min) return st;
     return null;
@@ -1246,7 +1347,11 @@
     el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
     if (phase.type === 'settle') {
       const stage = currentStage();
-      startSettleCues(SETTLE_CUES[stage.method] || SETTLE_CUES.count);
+      const cues = (SETTLE_CUES[stage.method] || SETTLE_CUES.count).slice();
+      if (kyosakuAvailable()){
+        cues.push("If you feel yourself drifting, touch the screen to receive the stick.");
+      }
+      startSettleCues(cues);
     } else if (phase.type === 'kinhin') {
       el('phaseGuide').textContent = meta.guide;
     } else {
@@ -1545,6 +1650,12 @@
     const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
     return longest >= 300;
   }
+  function kyosakuAvailable(){
+    // The kyōsaku (tap-to-receive strike) is offered only on sittings of ten
+    // minutes or longer — the depth at which an attention prompt earns its place.
+    const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
+    return longest >= 600;
+  }
   function resolveDisplay(){
     if (displayMode === 'random') {
       const pool = ['ring','glass'];
@@ -1639,7 +1750,8 @@
       const n = totalSits();
       const nx = nextStage();
       note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
-      if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
+      if (fixedMinutes > 0){ note += `<br>Held steady. Return tomorrow.`; }
+      else if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
       else { note += `<br>The full rhythm is yours now.`; }
     }
     el('sitSummary').innerHTML = note;
@@ -1742,7 +1854,54 @@
     }
   });
   // Cycle the time display live: ring → hourglass → ring …
-  el('orbWrap').onclick = skipSettle;
+  // Tap behavior during practice:
+  //  - during settle: tap skips ahead into the sitting (existing behavior)
+  //  - during zazen on a sit of 10 min+: tap anywhere requests the kyōsaku, which
+  //    plays out as a small ceremony (gasshō bow) before the strike sounds.
+  let kyosakuCeremonyActive = false;
+  function practiceTap(){
+    const phase = plan[phaseIdx];
+    if (!phase || paused) return;
+    if (phase.type === 'settle'){ skipSettle(); return; }
+    if (phase.type === 'zazen' && kyosakuAvailable() && !kyosakuCeremonyActive){ kyosakuCeremony(); }
+  }
+
+  // The request → bow → strike exchange (~6.5s). The active timer display fades
+  // out as the gasshō fades in and inclines (the shared bow); you bow back; the
+  // gasshō rises and the display returns; the strike falls in the quiet after.
+  function kyosakuCeremony(){
+    const g = el('gasshoGlyph');
+    if (!g) return;
+    kyosakuCeremonyActive = true;
+    const activeEl = el(activeDisplay === 'ring' ? 'ringDisplay'
+                      : activeDisplay === 'glass' ? 'hourglassDisplay' : 'incenseDisplay');
+    // 1) the monitor turns toward you: display fades, gasshō fades in
+    if (activeEl) activeEl.classList.add('ceremony-dim');
+    g.classList.add('show');
+    // 2) the bow: gasshō inclines and holds (your time to bow back)
+    setTimeout(()=> g.classList.add('bow'), 1100);
+    // 3) the gasshō rises and fades; the display returns
+    setTimeout(()=>{
+      g.classList.remove('bow');
+    }, 3900);
+    setTimeout(()=>{
+      g.classList.remove('show');
+      if (activeEl) activeEl.classList.remove('ceremony-dim');
+    }, 4600);
+    // 4) the strike falls in the silence just after the bow closes
+    setTimeout(()=>{ kyosaku(); }, 5600);
+    // release the lock once the whole exchange has settled
+    setTimeout(()=>{ kyosakuCeremonyActive = false; }, 6500);
+  }
+
+  el('orbWrap').onclick = practiceTap;
+  el('practice').addEventListener('click', (e)=>{
+    // Whole-screen tap during the sit, so eyes can stay closed. Ignore taps on
+    // the controls (display cycle, pause, etc.) so they keep their own actions.
+    if (e.target.closest('button')) return;
+    if (e.target.closest('#orbWrap')) return;  // orb handles its own click
+    practiceTap();
+  });
   el('cycleBtn').onclick = ()=>{
     const order = incenseAvailable() ? ['ring','glass','incense'] : ['ring','glass'];
     const idx = order.indexOf(activeDisplay);
@@ -1803,12 +1962,41 @@
     renderSettings();
   };
 
+  function renderFixedRow(){
+    const row = el('fixedRow');
+    if (!row) return;
+    row.innerHTML = '';
+    const opts = [
+      { m:0,  label:'off' },
+      { m:1,  label:'1 min' },
+      { m:3,  label:'3 min' },
+      { m:5,  label:'5 min' },
+      { m:10, label:'10 min' },
+      { m:15, label:'15 min' },
+      { m:20, label:'20 min' },
+    ];
+    opts.forEach(o=>{
+      const b = document.createElement('button');
+      b.textContent = o.label;
+      if (fixedMinutes === o.m) b.classList.add('on');
+      b.onclick = ()=>{
+        fixedMinutes = o.m;
+        sSet(FIXED_KEY, String(o.m));
+        userStructure = null;   // clear any relative adjustment
+        renderFixedRow();
+        renderHome();
+      };
+      row.appendChild(b);
+    });
+  }
+
   function renderSettings(){
     const tog = el('testToggle');
     tog.classList.toggle('on', testingMode);
     el('testState').textContent = testingMode ? 'on' : 'off';
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
     el('pastSitState').textContent = totalSits() + ' recorded';
+    renderFixedRow();
     // Build vow editor: four fields, each labeled with the traditional vow it
     // corresponds to, with the practitioner's custom line as the editable value.
     const ed = el('vowEditor');
