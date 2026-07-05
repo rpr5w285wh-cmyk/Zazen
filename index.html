@@ -180,7 +180,7 @@
   .glyph-stage.fade-out { opacity: 0; }
   .glyph-stage.gone { display: none; }
   .glyph-wrap { width: 132px; height: 132px; margin: 0 auto; opacity: 0; }
-  .glyph-wrap.begin { animation: glyphIn 2.4s ease forwards; }
+  .glyph-wrap.glyph-begin { animation: glyphIn 2.4s ease forwards; }
   #closeGlyph { width: 100%; height: 100%; overflow: visible; display: block; }
   #cgPath, #cgDoorLeaf, #cgHorizon, .cg-edge { fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(205,189,157,0.35)); opacity: 0.85; }
   .cg-emph { stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(205,189,157,0.3)); }
@@ -394,7 +394,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '27';
+  const APP_VERSION = '29';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -764,12 +764,12 @@
     // the phone before the flame and the vows begin. The screen stays dark and
     // still until then. Testing mode keeps it short.
     const wrap = el('glyphWrap');
-    wrap.classList.remove('begin');           // reset the fade-in
+    wrap.classList.remove('glyph-begin');     // reset the fade-in
     void wrap.offsetWidth;                     // reflow so re-adding re-triggers
     if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); }
     const pauseMs = testingMode ? 1500 : 9000;
     closeGlyphTimer = setTimeout(()=>{
-      wrap.classList.add('begin');             // flame fades in
+      wrap.classList.add('glyph-begin');        // flame fades in
       startCloseGlyph(vows);
     }, pauseMs);
   }
@@ -884,6 +884,11 @@
 
     function render(c){
       let acc=0;
+      // Frame-skip guard: if the phone throttles animation frames (screen dims
+      // while bowing), whole stages can be jumped over. Anything the pain state
+      // turned on is force-cleared once we're past the morph, no matter which
+      // stage renders next.
+      if (c >= T.painHold + T.toHeart){ setEmph(0); path.setAttribute('transform','translate(0 0)'); }
       // PAIN hold (vow 1) — emphasis lines sway/pulse
         setCap(CAP[0]);
       if(c < (acc+=T.painHold)){
@@ -938,6 +943,7 @@
       if(c < (acc+=T.toDoor)){
         const t=ease((c-(acc-T.toDoor))/T.toDoor);
         path.setAttribute('d', ptsToPath(morph(HEART,DOOR,t)));
+        path.setAttribute('transform','translate(0 0)'); setEmph(0);
         dot.setAttribute('cx',lerp(HOME.x,50,t).toFixed(2)); dot.setAttribute('cy',lerp(HOME.y,92,t).toFixed(2));
         setDot(1,3.2); doorLeaf.style.opacity=0; horizon.style.opacity=0;
         return;
@@ -947,6 +953,7 @@
       if(c < (acc+=T.doorOpen)){
         const t=ease((c-(acc-T.doorOpen))/T.doorOpen);
         path.setAttribute('d', ptsToPath(DOOR));
+        path.setAttribute('transform','translate(0 0)'); setEmph(0);
         const lx=36, rx=64, ty=20, by=82, freeX=lerp(rx,lx+7,t);
         doorLeaf.style.opacity=1;
         doorLeaf.setAttribute('d', `M ${lx} ${ty} L ${freeX} ${lerp(ty,ty+6,t)} L ${freeX} ${lerp(by,by-6,t)} L ${lx} ${by}`);
@@ -973,7 +980,7 @@
       const CONV_START=acc, CONV_DUR=T.beginXform+T.horizonDraw+T.toPath;
       if(c < (acc+=T.beginXform)){
         const t=ease((c-(acc-T.beginXform))/T.beginXform), g=ease((c-CONV_START)/CONV_DUR);
-        path.style.opacity=0;
+        path.style.opacity=0; setEmph(0);
         [frameTop,frameBot,frameL,frameR].forEach(f=>f.style.opacity=1);
         frameTop.setAttribute('x1','36'); frameTop.setAttribute('y1','20'); frameTop.setAttribute('x2','64'); frameTop.setAttribute('y2','20');
         frameBot.setAttribute('x1','36'); frameBot.setAttribute('y1','82'); frameBot.setAttribute('x2','64'); frameBot.setAttribute('y2','82');
@@ -985,7 +992,7 @@
       }
       if(c < (acc+=T.horizonDraw)){
         const t=ease((c-(acc-T.horizonDraw))/T.horizonDraw), g=ease((c-CONV_START)/CONV_DUR);
-        doorLeaf.style.opacity=0;
+        path.style.opacity=0; doorLeaf.style.opacity=0;
         frameTop.style.opacity=(0.3*(1-t)).toFixed(2); frameBot.style.opacity=(0.3*(1-t)).toFixed(2);
         frameL.style.opacity=1; frameR.style.opacity=1;
         setVerticals(g);
@@ -996,7 +1003,7 @@
       }
       if(c < (acc+=T.toPath)){
         const g=ease((c-CONV_START)/CONV_DUR);
-        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        path.style.opacity=0; doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
         frameL.style.opacity=1; frameR.style.opacity=1;
         setVerticals(g); horizon.style.opacity=0.6;
         dot.setAttribute('cx','50'); dot.setAttribute('cy','50'); setDot(1,3.0);
@@ -1006,7 +1013,7 @@
       if(c < (acc+=T.pathFade)){
         setCap(CAP[3]);
         const t=ease((c-(acc-T.pathFade))/T.pathFade);
-        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        path.style.opacity=0; doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
         frameL.style.opacity=1; frameR.style.opacity=1;
         setVerticals(1);
         horizon.style.opacity=(0.6*(1-t)).toFixed(2);
@@ -1018,7 +1025,7 @@
       if(c < (acc+=T.foreverLine)){
         setCap(CAP[3]);
         const t=ease((c-(acc-T.foreverLine))/T.foreverLine);
-        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        path.style.opacity=0; doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
         horizon.style.opacity=0; setDot(0,0);
         frameL.style.opacity=1; frameR.style.opacity=1;
         setForeverLine(t);
@@ -1029,7 +1036,7 @@
       // dissolve together via the stage's CSS opacity fade (resolveToVows).
       {
         setCap(CAP[3]);
-        doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
+        path.style.opacity=0; doorLeaf.style.opacity=0; frameTop.style.opacity=0; frameBot.style.opacity=0;
         frameL.style.opacity=1; frameR.style.opacity=1;
         horizon.style.opacity=0; setDot(0,0);
         setForeverLine(1);
