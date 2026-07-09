@@ -8,8 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Zazen">
 <meta name="theme-color" content="#161109">
-<!-- Home-screen icon: a candlelit ensō on dark ground, inlined as SVG data URI -->
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' fill='%23161109'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%23f0a860' stroke-width='7' stroke-linecap='round' stroke-dasharray='300 40' transform='rotate(110 90 90)'/%3E%3C/svg%3E">
+<!-- Home-screen icon: a candlelit ensō on dark ground. iOS needs a real,
+     fetchable PNG here — it ignores data URIs and SVG touch icons. -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital@0;1&display=swap');
 
@@ -394,7 +395,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '29';
+  const APP_VERSION = '30';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -402,25 +403,31 @@
   // back to an inline manifest and service worker so a lone file still works.
   const isFileProtocol = location.protocol === 'file:';
   try {
-    // Manifest: link the external one; if it 404s the browser simply ignores it,
-    // so also attach an inline blob manifest as a safety net.
+    // Manifest: link the external one. Only if it's actually missing (a lone
+    // copy of this file hosted without its companions) attach an inline blob
+    // manifest as a fallback — appending both unconditionally lets the later,
+    // less complete blob one win.
     const ext = document.createElement('link');
     ext.rel = 'manifest'; ext.href = 'manifest.json';
     document.head.appendChild(ext);
 
-    const manifest = {
-      name: "Just Sitting", short_name: "Zazen", display: "standalone",
-      background_color: "#161109", theme_color: "#161109", orientation: "portrait",
-      icons: [{
-        src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' fill='%23161109'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%23f0a860' stroke-width='7' stroke-linecap='round' stroke-dasharray='300 40' transform='rotate(110 90 90)'/%3E%3C/svg%3E",
-        sizes: "180x180", type: "image/svg+xml"
-      }]
-    };
-    const mblob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-    const mlink = document.createElement('link');
-    mlink.rel = 'manifest';
-    mlink.href = URL.createObjectURL(mblob);
-    document.head.appendChild(mlink);
+    if (!isFileProtocol) fetch('manifest.json').then(r => { if (!r.ok) throw 0; }).catch(() => {
+      const manifest = {
+        name: "Just Sitting", short_name: "Zazen", display: "standalone",
+        background_color: "#161109", theme_color: "#161109", orientation: "portrait",
+        start_url: "./",
+        icons: [{
+          src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' fill='%23161109'/%3E%3Ccircle cx='90' cy='90' r='54' fill='none' stroke='%23f0a860' stroke-width='7' stroke-linecap='round' stroke-dasharray='300 40' transform='rotate(110 90 90)'/%3E%3C/svg%3E",
+          sizes: "180x180", type: "image/svg+xml"
+        }]
+      };
+      const mblob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+      const mlink = document.createElement('link');
+      mlink.rel = 'manifest';
+      mlink.href = URL.createObjectURL(mblob);
+      ext.remove();
+      document.head.appendChild(mlink);
+    });
   } catch(e){}
 
   // Service worker: prefer the external sw.js (proper scope, real offline);
@@ -450,7 +457,7 @@
   }
 
   // ---- Keisu / rin: the bowl-shaped standing bell. Low, long, shimmering. ----
-  function keisu(strikes = 1, gap = 2.4) {
+  function keisu(strikes = 1, gap = 2.4, level = 1) {
     try {
       ensureAudio();
 
@@ -459,7 +466,7 @@
         const f0 = 150; // low fundamental, like a standing bell
 
         const out = actx.createGain();
-        out.gain.value = 0.9;
+        out.gain.value = 0.9 * level;
         out.connect(actx.destination);
 
         // Gentle high-cut so upper partials shimmer rather than bite.
@@ -664,7 +671,7 @@
       let t = 0;
       [1.0, 0.8, 0.6].forEach((lvl, i) => {
         t = gaps[i];
-        setTimeout(()=>keisu(1, 0), t * 1000);
+        setTimeout(()=>keisu(1, 0, lvl), t * 1000);
       });
     } catch(e){}
   }
@@ -690,11 +697,20 @@
   function record(minutes) {
     if (testingMode) return;   // testing sits leave the real record untouched
     const arr = load().slice();
-    arr.push({ d: new Date().toISOString().slice(0,10), m: minutes, t: Date.now() });
+    arr.push({ d: dayStr(new Date()), m: minutes, t: Date.now() });
     save(arr);
   }
   function totalSits() { return load().length; }
-  function dayStr(d){ return d.toISOString().slice(0,10); }
+  // Local calendar date — an evening sit belongs to today, not to tomorrow's UTC date.
+  function dayStr(d){
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+  // Parse "YYYY-MM-DD" as local midnight, matching dayStr above.
+  function parseDay(s){
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
 
   // ---------- Vows (personalizable, persisted) ----------
   const VOW_KEY = 'zazen.vows.v1';
@@ -711,7 +727,9 @@
     "The way is beyond reach; I will walk it anyway.",
   ];
   function loadVows(){
-    return (Array.isArray(vowsCache) && vowsCache.length) ? vowsCache.slice() : PERSONAL_VOWS.slice();
+    const v = (Array.isArray(vowsCache) && vowsCache.length) ? vowsCache.slice() : PERSONAL_VOWS.slice();
+    while (v.length < 4) v.push('');   // pad short legacy arrays; empty slots are omitted lines
+    return v;
   }
   function saveVows(arr){ vowsCache = arr.slice(); sSet(VOW_KEY, JSON.stringify(arr)); }
 
@@ -735,6 +753,7 @@
 
   // Break a vow at its semicolon onto two lines, keeping the semicolon.
   function vowHTML(line){
+    if (!line) return '';
     const parts = line.split(';');
     if (parts.length === 2) return parts[0].trim() + ';<br>' + parts[1].trim();
     return line;
@@ -746,7 +765,7 @@
     // Pre-build the static four-vow stack (hidden until the glyph pass ends).
     final.classList.remove('show');
     final.innerHTML = '';
-    vows.forEach((line, i)=>{
+    vows.filter(line => line && line.trim()).forEach((line, i)=>{
       const wrap = document.createElement('div');
       wrap.className = 'vow-line';
       wrap.innerHTML = vowHTML(line);
@@ -791,7 +810,9 @@
     const emph = ['cgE1','cgE2','cgE3','cgE4'].map(id=>el(id));
     if (!path) return;
     // Captions shown below the glyph, one per state, broken at the semicolon.
-    const CAP = (vows && vows.length===4) ? vows.slice() : loadVows();
+    // Always four slots — an omitted vow simply leaves its caption blank.
+    const CAP = (vows ? vows.slice() : loadVows());
+    while (CAP.length < 4) CAP.push('');
     let lastCap = '';
     function setCap(s){ if(s!==lastCap){ caption.innerHTML = vowHTML(s); lastCap=s; } }
     const EMPH_BASE = emph.map(e=>({
@@ -1217,8 +1238,8 @@
       const days = new Set(arr.map(s=>s.d)).size;
       let gapNote = "";
       const last = arr[arr.length-1];
-      const lastDate = new Date(last.d);
-      const today = new Date(dayStr(new Date()));
+      const lastDate = parseDay(last.d);
+      const today = parseDay(dayStr(new Date()));
       const diff = Math.round((today - lastDate)/86400000);
       if (diff === 0) gapNote = "You have already sat today.";
       else if (diff === 1) gapNote = "Yesterday you sat.";
@@ -1232,8 +1253,10 @@
     const nx = nextStage();
     if (nx) {
       const remaining = nx.min - n;
-      el('stageDesc').textContent += ` `;
-      const small = document.createElement('span');
+      const note = document.createElement('span');
+      note.style.cssText = 'display:block;margin-top:8px;color:var(--ink-faint);font-size:0.85rem;';
+      note.textContent = `${remaining} more ${remaining === 1 ? 'sitting' : 'sittings'} until ${nx.name}.`;
+      el('stageDesc').appendChild(note);
     }
 
     // plan row (reflect active structure)
@@ -1812,7 +1835,7 @@
     const grid = el('logGrid');
     grid.innerHTML = '';
     // last 28 days
-    const today = new Date(dayStr(new Date()));
+    const today = parseDay(dayStr(new Date()));
     const sat = new Set(arr.map(s=>s.d));
     for (let i=27;i>=0;i--){
       const d = new Date(today); d.setDate(d.getDate()-i);
@@ -1946,8 +1969,16 @@
     if (!raw){ el('importBtn').textContent = 'paste a code first'; setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600); return; }
     try {
       const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
-      if (Array.isArray(payload.sessions)) save(payload.sessions);
-      if (Array.isArray(payload.vows) && payload.vows.length) saveVows(payload.vows);
+      // Keep only well-formed entries so a corrupted code can't fill the
+      // record with shapeless data that later renders as NaN/undefined.
+      if (Array.isArray(payload.sessions)) {
+        save(payload.sessions.filter(s => s && typeof s === 'object'
+          && typeof s.d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s.d)
+          && typeof s.m === 'number' && isFinite(s.m) && s.m >= 0));
+      }
+      if (Array.isArray(payload.vows) && payload.vows.some(v => typeof v === 'string' && v.trim())) {
+        saveVows(payload.vows.filter(v => typeof v === 'string'));
+      }
       el('importBtn').textContent = 'restored';
       renderSettings();
       setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600);
@@ -1957,9 +1988,11 @@
     }
   };
   el('vowSave').onclick = ()=>{
+    // Keep all four slots (empty = omitted) so each line stays under its
+    // traditional-vow label in the editor and its beat in the closing glyph.
     const lines = Array.from(el('vowEditor').querySelectorAll('textarea'))
-      .map(t=>t.value.trim()).filter(t=>t.length);
-    if (lines.length) { saveVows(lines); }
+      .map(t=>t.value.trim());
+    if (lines.some(t=>t.length)) { saveVows(lines); }
     else { saveVows(DEFAULT_VOWS.slice()); }
     el('vowSave').textContent = 'saved';
     setTimeout(()=>{ el('vowSave').textContent = 'save'; }, 1400);

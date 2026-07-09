@@ -4,7 +4,8 @@
 // update creates a fresh cache and old ones are cleared on activate.
 const VERSION = new URL(location).searchParams.get('v') || '0';
 const CACHE = 'zazen-v' + VERSION;
-const ASSETS = ['./', './index.html', './manifest.json', './icon.svg'];
+const ASSETS = ['./', './index.html', './manifest.json', './icon.svg',
+  './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
