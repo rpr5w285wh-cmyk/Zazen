@@ -139,7 +139,7 @@
 
   .hourglass { position: absolute; width: 124px; height: 180px; }
 
-  .incense { position: absolute; width: 130px; height: 200px; }
+  .incense { position: absolute; width: 160px; height: 240px; }
   /* Kyōsaku gasshō: hidden until the ceremony; fades in, inclines (the bow),
      rises and fades back to the timer display. */
   .gassho { position: absolute; width: 150px; height: 150px; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
@@ -154,7 +154,7 @@
   /* the bow: the flame gutters/bends low, then draws back up */
   #gasshoInner { transform-origin: 50px 70px; transition: transform 1.4s cubic-bezier(0.4,0,0.3,1); }
   .gassho.bow #gasshoInner { transform: scaleY(0.55) translateY(18px); }
-  #incEmber { filter: drop-shadow(0 0 6px var(--glow)); }
+  #incEmber { filter: drop-shadow(0 0 8px var(--glow)); }
   #incStick { transition: y 0.95s linear, height 0.95s linear; }
   #incEmber { transition: cy 0.95s linear; }
   .ash-seg { transition: opacity 2.5s ease; }
@@ -321,14 +321,14 @@
       <!-- Incense display -->
       <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200">
         <!-- holder base -->
-        <ellipse cx="60" cy="184" rx="26" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
-        <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
+        <ellipse cx="60" cy="184" rx="30" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
+        <rect x="54.5" y="150" width="11" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
         <!-- unburnt stick (full length); its top is the burn front -->
-        <rect id="incStick" x="58" y="40" width="4" height="112" fill="var(--ink-dim)"></rect>
+        <rect id="incStick" x="56.5" y="40" width="7" height="112" fill="var(--ink-dim)"></rect>
         <!-- ash segments accumulate above the ember and shed irregularly -->
         <g id="incAshGroup"></g>
         <!-- glowing ember at the burn front -->
-        <circle id="incEmber" cx="60" cy="40" r="4" fill="var(--ember)"></circle>
+        <circle id="incEmber" cx="60" cy="40" r="6" fill="var(--ember)"></circle>
         <!-- rising smoke: irregular puffs spawned from the ember in JS -->
         <g id="incSmokeGroup"></g>
       </svg>
@@ -395,7 +395,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '30';
+  const APP_VERSION = '31';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -1622,11 +1622,11 @@
       // original curl: two opposing quadratic curves, drawn relative to the ember.
       // a small random mirror so successive wisps aren't identical.
       const m = Math.random() < 0.5 ? 1 : -1;
-      const top = burnY - 4;
-      p.setAttribute('d', `M60 ${top} q${-6*m} -14 ${2*m} -26 q${6*m} -10 ${-2*m} -22`);
+      const top = burnY - 5;
+      p.setAttribute('d', `M60 ${top} q${-8*m} -16 ${3*m} -30 q${8*m} -12 ${-3*m} -26`);
       p.setAttribute('fill','none');
       p.setAttribute('stroke','var(--ink-dim)');
-      p.setAttribute('stroke-width','1.4');
+      p.setAttribute('stroke-width','2');
       p.setAttribute('stroke-linecap','round');
       p.setAttribute('opacity','0');
       sg.appendChild(p);
@@ -1647,8 +1647,8 @@
     if (running && burnY > ashLastBurnY + 0.6){
       const seg = document.createElementNS('http://www.w3.org/2000/svg','rect');
       seg.setAttribute('class','ash-seg');
-      seg.setAttribute('x','58.4');
-      seg.setAttribute('width','3.2');
+      seg.setAttribute('x','57.2');
+      seg.setAttribute('width','5.6');
       seg.setAttribute('y', String(ashLastBurnY));
       seg.setAttribute('height', String(burnY - ashLastBurnY));
       seg.setAttribute('fill', '#8a8175');
