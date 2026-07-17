@@ -444,7 +444,10 @@
           self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])))});
           self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
           self.addEventListener('fetch',e=>{ if(e.request.method!=='GET')return;
-            e.respondWith(caches.match(e.request).then(h=>h||fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match('./'))));});`;
+            const nav = e.request.mode==='navigate';
+            e.respondWith(nav
+              ? fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match(e.request).then(h=>h||caches.match('./')))
+              : caches.match(e.request).then(h=>h||fetch(e.request).then(r=>{const c=r.clone();caches.open(CACHE).then(x=>x.put(e.request,c)).catch(()=>{});return r;}).catch(()=>caches.match('./'))));});`;
         const swUrl = URL.createObjectURL(new Blob([swCode], {type:'text/javascript'}));
         navigator.serviceWorker.register(swUrl).catch(()=>{});
       });
