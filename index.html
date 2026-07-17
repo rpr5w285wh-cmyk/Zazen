@@ -139,7 +139,7 @@
 
   .hourglass { position: absolute; width: 124px; height: 180px; }
 
-  .incense { position: absolute; width: 160px; height: 240px; }
+  .incense { position: absolute; width: 130px; height: 200px; }
   /* Kyōsaku gasshō: hidden until the ceremony; fades in, inclines (the bow),
      rises and fades back to the timer display. */
   .gassho { position: absolute; width: 150px; height: 150px; opacity: 0; pointer-events: none; transition: opacity 1s ease; }
@@ -154,7 +154,7 @@
   /* the bow: the flame gutters/bends low, then draws back up */
   #gasshoInner { transform-origin: 50px 70px; transition: transform 1.4s cubic-bezier(0.4,0,0.3,1); }
   .gassho.bow #gasshoInner { transform: scaleY(0.55) translateY(18px); }
-  #incEmber { filter: drop-shadow(0 0 8px var(--glow)); }
+  #incEmber { filter: drop-shadow(0 0 7px var(--glow)); }
   #incStick { transition: y 0.95s linear, height 0.95s linear; }
   #incEmber { transition: cy 0.95s linear; }
   .ash-seg { transition: opacity 2.5s ease; }
@@ -171,7 +171,10 @@
   .controls button#cycleBtn { font-size: 1.1rem; letter-spacing: 0; padding: 12px 10px; }
 
 
-  .controls { display: flex; gap: 28px; align-items: center; }
+  /* The controls stay out of sight while sitting; a double-tap summons them
+     (.show) and they slip away again if left untouched. */
+  .controls { display: flex; gap: 28px; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
+  .controls.show { opacity: 1; pointer-events: auto; }
   .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; transition: color 0.4s; }
   .controls button:hover { color: var(--ink-dim); }
 
@@ -247,9 +250,9 @@
       <div class="setting-note">Adds one sitting to the record, for sits lost to a reset or done away from the app.</div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Fixed sitting length</div>
-      <div class="setting-note" style="margin-bottom:14px;">Hold one length each day and let the progression rest. Choose a length to keep it fixed, or Off to follow the unfolding stages.</div>
-      <div class="adjust" id="fixedRow" style="margin-bottom:0;"></div>
+      <div class="tog-label" style="margin-bottom:10px;">Timer display</div>
+      <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond.</div>
+      <div class="adjust" id="displayRow" style="margin-bottom:0;"></div>
     </div>
     <div class="setting-block">
       <div class="tog-label" style="margin-bottom:10px;">The vows</div>
@@ -321,14 +324,14 @@
       <!-- Incense display -->
       <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200">
         <!-- holder base -->
-        <ellipse cx="60" cy="184" rx="30" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
-        <rect x="54.5" y="150" width="11" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
+        <ellipse cx="60" cy="184" rx="26" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
+        <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
         <!-- unburnt stick (full length); its top is the burn front -->
-        <rect id="incStick" x="56.5" y="40" width="7" height="112" fill="var(--ink-dim)"></rect>
+        <rect id="incStick" x="58" y="40" width="4" height="112" fill="var(--ink-dim)"></rect>
         <!-- ash segments accumulate above the ember and shed irregularly -->
         <g id="incAshGroup"></g>
         <!-- glowing ember at the burn front -->
-        <circle id="incEmber" cx="60" cy="40" r="6" fill="var(--ember)"></circle>
+        <circle id="incEmber" cx="60" cy="40" r="5" fill="var(--ember)"></circle>
         <!-- rising smoke: irregular puffs spawned from the ember in JS -->
         <g id="incSmokeGroup"></g>
       </svg>
@@ -345,8 +348,8 @@
         </g>
       </svg>
     </div>
-    <div class="controls">
-      <button id="cycleBtn">⊙</button>
+    <div class="controls" id="controlsRow">
+      <button id="cycleBtn" class="disp-hidden">⊙</button>
       <button id="pauseBtn">Pause</button>
       <button id="endBtn">End</button>
     </div>
@@ -395,7 +398,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '31';
+  const APP_VERSION = '32';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -679,8 +682,10 @@
   // ---------- Storage (light: dates, durations, count) ----------
   const KEY = 'zazen.sessions.v1';
   const FIXED_KEY = 'zazen.fixed.v1';   // fixed sitting length in minutes (0=off)
+  const FIXED_CHOICES = [1, 3, 5, 10];  // the lengths offered on the home screen
   let testingMode = false;   // when true, sittings are NOT recorded
-  let fixedMinutes = 0;      // 0 = follow the progression; >0 = fixed length
+  let fixedMinutes = 5;      // fixed length; 5 is the default sit (0 = the old
+                             // progression path, kept in code but no longer offered)
   // ---------- Persistence (standalone: localStorage is primary) ----------
   // In-memory caches keep the rest of the app synchronous; localStorage is the
   // durable store for a home-screen web app on a stable origin.
@@ -742,7 +747,13 @@
     if (v){ try { const a = JSON.parse(v); if (Array.isArray(a) && a.length) vowsCache = a; } catch(e){} }
     if (!vowsCache){ vowsCache = PERSONAL_VOWS.slice(); sSet(VOW_KEY, JSON.stringify(vowsCache)); }
     const fx = sGet(FIXED_KEY);
-    if (fx){ const n = parseInt(fx,10); if (!isNaN(n) && n>0) fixedMinutes = n; }
+    if (fx){
+      const n = parseInt(fx,10);
+      // Snap stored lengths outside the offered set (old 15/20/off) to the default.
+      fixedMinutes = FIXED_CHOICES.includes(n) ? n : 5;
+    }
+    const dm = sGet(DISPLAY_KEY);
+    if (['auto','ring','glass','incense','random'].includes(dm)) displayMode = dm;
     renderHome();
   }
   // Four semi-abstract glyphs, one per vow slot (by position, not text, so they
@@ -1284,47 +1295,22 @@
   }
 
   function renderAdjust(stage){
+    // Sitting length, chosen right on the home screen. The old shorter/longer
+    // presets and display-mode buttons live on in code but are no longer
+    // rendered; the display now follows the length (see resolveDisplay), and
+    // an override lives in settings.
     const row = el('adjustRow');
     row.innerHTML = '';
-    // Length presets relative to stage: shorter / suggested / longer
-    const presets = [
-      { k:'short', label:'shorter' },
-      { k:'plan',  label:'as planned' },
-      { k:'long',  label:'longer' },
-    ];
-    presets.forEach(pr=>{
+    FIXED_CHOICES.forEach(m=>{
       const b = document.createElement('button');
-      b.textContent = pr.label;
-      if ((pr.k==='plan' && !userStructure) ) b.classList.add('on');
+      b.textContent = `${m} min`;
+      if (fixedMinutes === m) b.classList.add('on');
       b.onclick = ()=>{
-        if (pr.k==='plan') userStructure = null;
-        else userStructure = scaleStructure(planFromStage(stage), pr.k==='short'?0.6:1.5);
+        fixedMinutes = m;
+        sSet(FIXED_KEY, String(m));
+        userStructure = null;
         renderHome();
       };
-      row.appendChild(b);
-    });
-    // spacer
-    const sp = document.createElement('span');
-    sp.style.width = '100%'; sp.style.height = '2px';
-    row.appendChild(sp);
-    // display-mode preference. Incense only makes sense for a meaningful burn,
-    // so it unlocks once the sitting is at least five minutes.
-    const longestSit = Math.max(0, ...(userStructure || planFromStage(stage))
-      .filter(p=>p.type==='zazen').map(p=>p.sec));
-    const incenseUnlocked = longestSit >= 300;
-    if (!incenseUnlocked && (displayMode === 'incense')) displayMode = 'ring';
-    const modes = [
-      { k:'ring',    label:'ring' },
-      { k:'glass',   label:'hourglass' },
-      { k:'incense', label:'incense', locked: !incenseUnlocked },
-      { k:'random',  label:'random' },
-    ];
-    modes.forEach(m=>{
-      if (m.locked) return; // hide until unlocked
-      const b = document.createElement('button');
-      b.textContent = m.label;
-      if (displayMode === m.k) b.classList.add('on');
-      b.onclick = ()=>{ displayMode = m.k; renderHome(); };
       row.appendChild(b);
     });
   }
@@ -1346,6 +1332,8 @@
     paused = false;
     sessionStartAt = Date.now();
     el('pauseBtn').textContent = 'Pause';
+    el('controlsRow').classList.remove('show');   // begin each sit bare
+    clearTimeout(controlsHideTimer);
     // Unlock audio on this user gesture: create + resume + play a silent blip so
     // iOS marks the context as user-activated. Without this, later bells stay mute.
     ensureAudio();
@@ -1370,7 +1358,9 @@
     phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
     resetAsh();   // fresh stick for this phase
     const meta = PHASE_META[phase.type];
-    el('phaseLabel').textContent = meta.label;
+    // The sit itself is unlabeled — no title over the stillness. Settling and
+    // kinhin keep their labels as gentle guidance.
+    el('phaseLabel').textContent = phase.type === 'zazen' ? '' : meta.label;
     stopSettleCues();
     const isSettle = phase.type === 'settle';
     el('skipHint').classList.toggle('disp-hidden', !isSettle);
@@ -1582,8 +1572,10 @@
     }
   }
 
-  // Display mode: 'ring', 'glass', or 'random' (picks one per session).
-  let displayMode = 'ring';
+  // Display mode: 'auto' (follows the sit length), 'ring', 'glass', 'incense',
+  // or 'random' (picks one per session). Persisted; the selector lives in settings.
+  const DISPLAY_KEY = 'zazen.display.v1';
+  let displayMode = 'auto';
   let activeDisplay = 'ring'; // resolved mode for this session
 
   // ---- Incense ash: segments that accumulate above the ember and shed ----
@@ -1623,10 +1615,10 @@
       // a small random mirror so successive wisps aren't identical.
       const m = Math.random() < 0.5 ? 1 : -1;
       const top = burnY - 5;
-      p.setAttribute('d', `M60 ${top} q${-8*m} -16 ${3*m} -30 q${8*m} -12 ${-3*m} -26`);
+      p.setAttribute('d', `M60 ${top} q${-6*m} -14 ${2*m} -26 q${6*m} -10 ${-2*m} -22`);
       p.setAttribute('fill','none');
       p.setAttribute('stroke','var(--ink-dim)');
-      p.setAttribute('stroke-width','2');
+      p.setAttribute('stroke-width','1.4');
       p.setAttribute('stroke-linecap','round');
       p.setAttribute('opacity','0');
       sg.appendChild(p);
@@ -1647,8 +1639,8 @@
     if (running && burnY > ashLastBurnY + 0.6){
       const seg = document.createElementNS('http://www.w3.org/2000/svg','rect');
       seg.setAttribute('class','ash-seg');
-      seg.setAttribute('x','57.2');
-      seg.setAttribute('width','5.6');
+      seg.setAttribute('x','58.4');
+      seg.setAttribute('width','3.2');
       seg.setAttribute('y', String(ashLastBurnY));
       seg.setAttribute('height', String(burnY - ashLastBurnY));
       seg.setAttribute('fill', '#8a8175');
@@ -1681,13 +1673,16 @@
     return longest >= 300;
   }
   function kyosakuAvailable(){
-    // The kyōsaku (tap-to-receive strike) is offered only on sittings of ten
-    // minutes or longer — the depth at which an attention prompt earns its place.
-    const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
-    return longest >= 600;
+    // The kyōsaku (tap-to-receive strike) is offered on every sitting length.
+    return true;
   }
   function resolveDisplay(){
-    if (displayMode === 'random') {
+    if (displayMode === 'auto') {
+      // The display follows the sitting length: the ring for a minute, the
+      // hourglass for the middle lengths, the incense from five minutes up.
+      const longest = Math.max(0, ...plan.filter(p=>p.type==='zazen').map(p=>p.sec));
+      activeDisplay = longest >= 300 ? 'incense' : (longest > 60 ? 'glass' : 'ring');
+    } else if (displayMode === 'random') {
       const pool = ['ring','glass'];
       if (incenseAvailable()) pool.push('incense');
       activeDisplay = pool[Math.floor(Math.random()*pool.length)];
@@ -1862,9 +1857,12 @@
     if (paused) {
       // Freeze the remaining time at the moment of pausing.
       phaseRemain = Math.max(0, Math.round((phaseEndAt - Date.now()) / 1000));
+      // Keep the controls up while paused — you need Resume within reach.
+      clearTimeout(controlsHideTimer);
     } else {
       // Resume: push the deadline out by the frozen remaining time.
       phaseEndAt = Date.now() + phaseRemain * 1000;
+      scheduleControlsHide();
     }
     el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
     drawProgress();
@@ -1924,13 +1922,31 @@
     setTimeout(()=>{ kyosakuCeremonyActive = false; }, 6500);
   }
 
-  el('orbWrap').onclick = practiceTap;
+  // Controls are summoned by double-tap and retire on their own after a few
+  // seconds — unless paused, when they stay so Resume remains within reach.
+  let controlsHideTimer = null;
+  function scheduleControlsHide(){
+    clearTimeout(controlsHideTimer);
+    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, 4000);
+  }
+  function showControls(){
+    el('controlsRow').classList.add('show');
+    clearTimeout(controlsHideTimer);
+    if (!paused) scheduleControlsHide();
+  }
+  // Whole-screen tap during practice, so eyes can stay closed. A lone tap is
+  // the kyōsaku request (or the settle skip); two taps within 300ms summon
+  // the pause/end controls instead.
+  let tapTimer = null;
   el('practice').addEventListener('click', (e)=>{
-    // Whole-screen tap during the sit, so eyes can stay closed. Ignore taps on
-    // the controls (display cycle, pause, etc.) so they keep their own actions.
+    // Ignore taps on the controls themselves so they keep their own actions.
     if (e.target.closest('button')) return;
-    if (e.target.closest('#orbWrap')) return;  // orb handles its own click
-    practiceTap();
+    if (tapTimer){
+      clearTimeout(tapTimer); tapTimer = null;
+      showControls();
+      return;
+    }
+    tapTimer = setTimeout(()=>{ tapTimer = null; practiceTap(); }, 300);
   });
   el('cycleBtn').onclick = ()=>{
     const order = incenseAvailable() ? ['ring','glass','incense'] : ['ring','glass'];
@@ -2002,29 +2018,25 @@
     renderSettings();
   };
 
-  function renderFixedRow(){
-    const row = el('fixedRow');
+  function renderDisplayRow(){
+    const row = el('displayRow');
     if (!row) return;
     row.innerHTML = '';
     const opts = [
-      { m:0,  label:'off' },
-      { m:1,  label:'1 min' },
-      { m:3,  label:'3 min' },
-      { m:5,  label:'5 min' },
-      { m:10, label:'10 min' },
-      { m:15, label:'15 min' },
-      { m:20, label:'20 min' },
+      { k:'auto',    label:'auto' },
+      { k:'ring',    label:'ring' },
+      { k:'glass',   label:'hourglass' },
+      { k:'incense', label:'incense' },
+      { k:'random',  label:'random' },
     ];
     opts.forEach(o=>{
       const b = document.createElement('button');
       b.textContent = o.label;
-      if (fixedMinutes === o.m) b.classList.add('on');
+      if (displayMode === o.k) b.classList.add('on');
       b.onclick = ()=>{
-        fixedMinutes = o.m;
-        sSet(FIXED_KEY, String(o.m));
-        userStructure = null;   // clear any relative adjustment
-        renderFixedRow();
-        renderHome();
+        displayMode = o.k;
+        sSet(DISPLAY_KEY, o.k);
+        renderDisplayRow();
       };
       row.appendChild(b);
     });
@@ -2036,7 +2048,7 @@
     el('testState').textContent = testingMode ? 'on' : 'off';
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
     el('pastSitState').textContent = totalSits() + ' recorded';
-    renderFixedRow();
+    renderDisplayRow();
     // Build vow editor: four fields, each labeled with the traditional vow it
     // corresponds to, with the practitioner's custom line as the editable value.
     const ed = el('vowEditor');
