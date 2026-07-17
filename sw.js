@@ -19,6 +19,23 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const isPage = e.request.mode === 'navigate'
+    || new URL(e.request.url).pathname.endsWith('/index.html');
+  if (isPage) {
+    // Network-first for the page itself, so a new deploy is picked up on the
+    // very next open. Cache-first here would pin the old page forever: the
+    // stale page re-registers the old sw.js?v= URL, and no update can ever
+    // break the loop. Offline falls back to the cached shell.
+    e.respondWith(
+      fetch(e.request).then(resp => {
+        const copy = resp.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+        return resp;
+      }).catch(() => caches.match(e.request).then(hit => hit || caches.match('./')))
+    );
+    return;
+  }
+  // Static assets stay cache-first; the versioned cache name refreshes them.
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(resp => {
       const copy = resp.clone();
