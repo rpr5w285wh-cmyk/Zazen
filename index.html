@@ -398,7 +398,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '32';
+  const APP_VERSION = '33';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -793,6 +793,10 @@
     el('glyphStage').classList.remove('fade-out');
     el('glyphStage').classList.remove('gone');
     el('closing').classList.remove('glyph-overflow');
+    // Clear any caption left over from a previous closing — otherwise it sits
+    // visible through the quiet pause, showing an old (possibly since-revised)
+    // vow before this sitting's own captions begin.
+    el('glyphCaption').innerHTML = '';
     // A quiet pause after the closing bell: time to breathe, bow, and reach for
     // the phone before the flame and the vows begin. The screen stays dark and
     // still until then. Testing mode keeps it short.
