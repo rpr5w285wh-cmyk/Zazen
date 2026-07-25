@@ -398,7 +398,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '33';
+  const APP_VERSION = '34';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -1350,6 +1350,7 @@
       s.start(); s.stop(actx.currentTime + 0.02);
     } catch(e){}
     resolveDisplay();
+    enterFullscreen();   // hide the status bar for the whole session
     show('practice');
     // The han is the wooden board that calls practitioners to the hall.
     // It opens the settle phase, sounding while you take your seat.
@@ -1473,6 +1474,24 @@
     advancePhase();
   }
 
+  // ---------- Fullscreen: hide the status bar while practicing ----------
+  // Entered on Begin (a user gesture, as the API requires) and left when
+  // returning home after the closing. Platforms without the Fullscreen API
+  // (older iOS) simply keep their status bar; nothing breaks.
+  function enterFullscreen(){
+    try {
+      const root = document.documentElement;
+      const req = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (req) { const p = req.call(root, { navigationUI: 'hide' }); if (p && p.catch) p.catch(()=>{}); }
+    } catch(e){}
+  }
+  function exitFullscreen(){
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) { const p = document.exitFullscreen(); if (p && p.catch) p.catch(()=>{}); }
+      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e){}
+  }
+
   // ---------- Wake lock: keep the screen on during practice ----------
   let wakeLock = null;
   let keepAwakeVideo = null;
@@ -1554,9 +1573,11 @@
       if (keepAwakeVideo) {
         keepAwakeVideo.pause();
         // If the platform promoted the video to fullscreen, step back out so
-        // the closing screen (vows) is visible.
+        // the closing screen (vows) is visible. Only when the VIDEO is the
+        // fullscreen element — the session's own page fullscreen (status bar
+        // hidden) stays on until the practitioner returns home.
         if (keepAwakeVideo.webkitExitFullscreen) keepAwakeVideo.webkitExitFullscreen();
-        if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+        if (document.fullscreenElement === keepAwakeVideo && document.exitFullscreen) document.exitFullscreen();
       }
       if (kaPaint) { clearInterval(kaPaint); kaPaint = null; }
     } catch(e){}
@@ -2074,7 +2095,7 @@
     }
   }
   el('logReturn').onclick = ()=>{ renderHome(); show('home'); };
-  el('closeReturn').onclick = ()=>{ renderHome(); show('home'); };
+  el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
 
   // init: paint immediately with empty caches, then re-render once the
   // persistent store has loaded.
