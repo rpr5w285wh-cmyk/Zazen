@@ -66,6 +66,8 @@
   .screen.active { display: flex; }
   /* Settings can exceed the viewport (vow editor); let it scroll internally. */
   #settings.active { max-height: calc(100dvh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+  /* Home can outgrow a small phone (320×568); scroll rather than clip the title. */
+  #home.active { max-height: calc(100dvh - 56px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
   #closing.active { max-height: calc(100dvh - 90px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 0 24px; justify-content: center; min-height: calc(100dvh - 90px); }
   #closing.active.glyph-overflow { overflow: visible; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -101,11 +103,11 @@
   .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
 
   .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 320px; }
-  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
+  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 8px; min-height: 44px; transition: color 0.4s; border-bottom: 1px solid transparent; }
   .adjust button:hover { color: var(--ink-dim); }
   .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
 
-  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
+  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; min-height: 44px; display: inline-flex; align-items: center; transition: color 0.4s; font-style: italic; }
   .ghost-link:hover { color: var(--ink-dim); }
   .ghost-row { display: flex; gap: 24px; align-items: center; }
   .test-banner { margin-top: 16px; color: var(--ember); font-size: 0.78rem; letter-spacing: 0.06em; font-style: italic; opacity: 0.9; text-align: center; max-width: 300px; }
@@ -173,9 +175,9 @@
 
   /* The controls stay out of sight while sitting; a double-tap summons them
      (.show) and they slip away again if left untouched. */
-  .controls { display: flex; gap: 28px; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
+  .controls { display: flex; gap: 44px; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
   .controls.show { opacity: 1; pointer-events: auto; }
-  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; transition: color 0.4s; }
+  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; min-height: 44px; transition: color 0.4s; }
   .controls button:hover { color: var(--ink-dim); }
 
   /* ---- Closing ---- */
@@ -202,6 +204,13 @@
   .sit-summary.show { opacity: 1; }
   #closeReturn { opacity: 0; transition: opacity 1s ease; pointer-events: none; }
   #closeReturn.show { opacity: 1; pointer-events: auto; }
+  /* Offered quietly during the ceremony; full strength once the vows rest. */
+  #closeReturn.show.soft { opacity: 0.5; }
+  /* A single ember breathes through the quiet pause after the closing bell,
+     so the dark screen reads as stillness rather than a crash. */
+  .close-ember { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 18px 6px var(--glow); opacity: 0; transition: opacity 1.5s ease; pointer-events: none; z-index: 3; animation: emberBreathe 4s ease-in-out infinite; }
+  .close-ember.show { opacity: 0.85; }
+  @keyframes emberBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.3); } }
 
   /* ---- Log ---- */
   .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
@@ -269,6 +278,10 @@
       <div class="tog-label" style="margin-bottom:10px;">Timer display</div>
       <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond.</div>
       <div class="adjust" id="displayRow" style="margin-bottom:0;"></div>
+    </div>
+    <div class="setting-block">
+      <button class="toggle-row" id="kyosakuToggle"><span class="tog-label">The kyōsaku</span><span class="tog-state" id="kyosakuState">off</span></button>
+      <div class="setting-note">When on, a single touch during the sit asks for the stick: a bow, then a sharp strike to bring you back. When off, a touch simply shows pause and end.</div>
     </div>
     <div class="setting-block">
       <div class="tog-label" style="margin-bottom:10px;">The vows</div>
@@ -374,6 +387,7 @@
 
   <!-- CLOSING -->
   <section class="screen" id="closing">
+    <div class="close-ember" id="closeEmber"></div>
     <div class="glyph-stage" id="glyphStage">
       <div class="glyph-wrap" id="glyphWrap">
         <svg id="closeGlyph" viewBox="0 0 100 100" aria-hidden="true">
@@ -414,7 +428,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '36';
+  const APP_VERSION = '37';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -773,6 +787,7 @@
     }
     const dm = sGet(DISPLAY_KEY);
     if (['auto','ring','glass','incense','random'].includes(dm)) displayMode = dm;
+    kyosakuOn = sGet(KYOSAKU_KEY) === '1';
     renderHome();
   }
   // Four semi-abstract glyphs, one per vow slot (by position, not text, so they
@@ -820,11 +835,59 @@
     wrap.classList.remove('glyph-begin');     // reset the fade-in
     void wrap.offsetWidth;                     // reflow so re-adding re-triggers
     if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); }
+    if (closeReturnTimer){ clearTimeout(closeReturnTimer); }
     const pauseMs = testingMode ? 1500 : 9000;
+    closingPhase = 'pause';
+    closingStartedAt = Date.now();
+    el('closeEmber').classList.add('show');   // one ember through the pause
+    el('closeReturn').classList.remove('soft');
     closeGlyphTimer = setTimeout(()=>{
+      closingPhase = 'glyph';
+      el('closeEmber').classList.remove('show');
       wrap.classList.add('glyph-begin');        // flame fades in
       startCloseGlyph(vows);
     }, pauseMs);
+    // The way out is always within reach: a quiet return after a few seconds,
+    // and any touch skips ahead to the vows (see the closing tap handler).
+    closeReturnTimer = setTimeout(()=>{
+      if (closingPhase !== 'vows'){ el('closeReturn').classList.add('show', 'soft'); }
+    }, CLOSING_SKIP_MS);
+  }
+
+  // ---------- Closing state ----------
+  // 'pause' (dark, the ember), 'glyph' (the morphing pass), 'vows' (at rest).
+  const CLOSING_SKIP_MS = 3000;   // taps this soon after End are the End tap
+  let closingPhase = 'idle';
+  let closingStartedAt = 0;
+  let closeReturnTimer = null;
+
+  // Phase B: fade the glyph + caption away, reveal the four vows, then the
+  // summary, then the return link — the calm resting state of the closing.
+  // `fast` is the skipped path: the same sequence at a brisker pace.
+  function resolveToVows(fast){
+    if (closingPhase === 'vows') return;
+    closingPhase = 'vows';
+    const stage = el('glyphStage'), final = el('vowFinal');
+    el('closeEmber').classList.remove('show');
+    stage.classList.add('fade-out');
+    el('closing').classList.remove('glyph-overflow');
+    setTimeout(()=>{
+      stage.classList.add('gone');           // collapse so vows truly center
+      final.classList.add('show');           // four vows rise in turn
+      setTimeout(()=> el('sitSummary').classList.add('show'), fast ? 1200 : 4000);
+      setTimeout(()=>{ el('closeReturn').classList.remove('soft'); el('closeReturn').classList.add('show'); }, fast ? 1800 : 5200);
+    }, fast ? 400 : 1500);
+  }
+
+  // A touch anywhere on the closing (after the first few seconds) goes
+  // straight to the vows: the ceremony is offered, never imposed.
+  function skipClosing(){
+    if (closingPhase !== 'pause' && closingPhase !== 'glyph') return;
+    if (Date.now() - closingStartedAt < CLOSING_SKIP_MS) return;
+    if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer = null; }
+    if (cgRAF){ cancelAnimationFrame(cgRAF); cgRAF = null; }
+    el('glyphWrap').classList.add('glyph-begin');   // ensure the stage can fade
+    resolveToVows(true);
   }
 
 
@@ -1116,29 +1179,15 @@
     cancelAnimationFrame(cgRAF);
     path.setAttribute('d', ptsToPath(BOLT));
     cgRAF = requestAnimationFrame(loop);
-    // Testing mode: surface the return link early so you needn't wait out the
-    // whole pass on every test. The glyph still plays and resolves normally.
-    if (testingMode){
-      setTimeout(()=>{ if(cgRAF) el('closeReturn').classList.add('show'); }, 2500);
-    }
-
-    // Phase B: fade the glyph + caption away, reveal the four vows, then the
-    // summary, then the return link — the calm resting state the closing had
-    // before the glyph existed.
-    function resolveToVows(){
-      const stage = el('glyphStage'), final = el('vowFinal');
-      stage.classList.add('fade-out');
-      el('closing').classList.remove('glyph-overflow');
-      setTimeout(()=>{
-        stage.classList.add('gone');           // collapse so vows truly center
-        final.classList.add('show');           // four vows rise in turn
-        setTimeout(()=> el('sitSummary').classList.add('show'), 4000);
-        setTimeout(()=> el('closeReturn').classList.add('show'), 5200);
-      }, 1500);
-    }
   }
 
-  function stopCloseGlyph(){ if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; } if(closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer=null; } }
+  function stopCloseGlyph(){
+    if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; }
+    if(closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer=null; }
+    if(closeReturnTimer){ clearTimeout(closeReturnTimer); closeReturnTimer=null; }
+    closingPhase = 'idle';
+    const ember = el('closeEmber'); if (ember) ember.classList.remove('show');
+  }
 
   // ---------- Progression: depth unlocked by accumulated sits ----------
   // Each stage defines the guidance + a default structure.
@@ -1237,6 +1286,8 @@
     ],
   };
   let settleRotator = null;
+  const SETTLE_CUE_SEC = 5;          // seconds each settling cue stays up
+  const CONTROLS_INTRO_MS = 5000;    // how long pause/end show at a sit's start
 
   // ---------- App state ----------
   let userStructure = null;   // overrides stage structure if adjusted
@@ -1355,8 +1406,9 @@
     paused = false;
     sessionStartAt = Date.now();
     el('pauseBtn').textContent = 'Pause';
-    el('controlsRow').classList.remove('show');   // begin each sit bare
-    clearTimeout(controlsHideTimer);
+    // Show pause and end for a few seconds, so their existence is learned
+    // before the screen goes bare; a touch brings them back at any time.
+    showControls(CONTROLS_INTRO_MS);
     // Unlock audio on this user gesture: create + resume + play a silent blip so
     // iOS marks the context as user-activated. Without this, later bells stay mute.
     ensureAudio();
@@ -1378,6 +1430,24 @@
 
   function startPhase(){
     const phase = plan[phaseIdx];
+    const isSettle = phase.type === 'settle';
+    let cues = null;
+    if (isSettle) {
+      const stage = currentStage();
+      cues = (SETTLE_CUES[stage.method] || SETTLE_CUES.count).slice();
+      // iPhones can't hide the status bar in portrait; held sideways, iOS
+      // clears it on its own. Only offer the cue where it's actually needed —
+      // platforms with the Fullscreen API already sit on a clean screen.
+      if (!fullscreenSupported()){
+        cues.splice(1, 0, "Turn the phone sideways, and the clock and battery fall away.");
+      }
+      cues.push(kyosakuAvailable()
+        ? "If you drift, a single touch asks for the stick. Two touches find pause and end."
+        : "Touch the screen at any time to find pause and end.");
+      // Each cue needs its seconds on screen. Stretch the settle to fit them
+      // all, rather than letting the last cue fall past the opening bell.
+      phase.sec = Math.max(phase.sec, cues.length * SETTLE_CUE_SEC);
+    }
     phaseRemain = phase.sec;
     phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
     resetAsh();   // fresh stick for this phase
@@ -1386,21 +1456,9 @@
     // kinhin keep their labels as gentle guidance.
     el('phaseLabel').textContent = phase.type === 'zazen' ? '' : meta.label;
     stopSettleCues();
-    const isSettle = phase.type === 'settle';
     el('skipHint').classList.toggle('disp-hidden', !isSettle);
     el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
-    if (phase.type === 'settle') {
-      const stage = currentStage();
-      const cues = (SETTLE_CUES[stage.method] || SETTLE_CUES.count).slice();
-      // iPhones can't hide the status bar in portrait; held sideways, iOS
-      // clears it on its own. Only offer the cue where it's actually needed —
-      // platforms with the Fullscreen API already sit on a clean screen.
-      if (!fullscreenSupported()){
-        cues.splice(1, 0, "Turn the phone sideways, and the clock and battery fall away.");
-      }
-      if (kyosakuAvailable()){
-        cues.push("If you feel yourself drifting, touch the screen to receive the stick.");
-      }
+    if (isSettle) {
       startSettleCues(cues);
     } else if (phase.type === 'kinhin') {
       el('phaseGuide').textContent = meta.guide;
@@ -1414,6 +1472,7 @@
       if (phase.type === 'zazen') {
         // Shijosho: two strikes of the keisu to begin a sitting.
         keisu(2, 2.6);
+        showControls(CONTROLS_INTRO_MS);   // a last glimpse of pause and end
       } else if (phase.type === 'kinhin') {
         // Two sharp taku to signal rising into walking meditation.
         taku(2, 0.5);
@@ -1430,7 +1489,9 @@
     const guideEl = el('phaseGuide');
     let i = 0;
     const slots = cues.length;
-    const interval = Math.max(5000, Math.floor((phaseRemain * 1000) / slots));
+    // The settle was sized in startPhase so every cue gets SETTLE_CUE_SEC;
+    // the floor here only guards a phase that somehow came in shorter.
+    const interval = Math.max(4000, Math.floor((phaseRemain * 1000) / slots));
 
     // Put the text in place while fully invisible, force the browser to finish
     // laying it out (including text-wrap: balance) by reading a layout value,
@@ -1631,6 +1692,8 @@
   // or 'random' (picks one per session). Persisted; the selector lives in settings.
   const DISPLAY_KEY = 'zazen.display.v1';
   let displayMode = 'auto';
+  const KYOSAKU_KEY = 'zazen.kyosaku.v1';   // '1' when the stick is offered
+  let kyosakuOn = false;
   let activeDisplay = 'ring'; // resolved mode for this session
 
   // ---- Incense ash: segments that accumulate above the ember and shed ----
@@ -1728,8 +1791,10 @@
     return longest >= 300;
   }
   function kyosakuAvailable(){
-    // The kyōsaku (tap-to-receive strike) is offered on every sitting length.
-    return true;
+    // The kyōsaku (tap-to-receive strike) is opt-in from settings, on any
+    // length. Off by default: a first exploratory touch should not be met
+    // with a crack of wood.
+    return kyosakuOn;
   }
   function resolveDisplay(){
     if (displayMode === 'auto') {
@@ -1946,7 +2011,11 @@
     const phase = plan[phaseIdx];
     if (!phase || paused) return;
     if (phase.type === 'settle'){ skipSettle(); return; }
-    if (phase.type === 'zazen' && kyosakuAvailable() && !kyosakuCeremonyActive){ kyosakuCeremony(); }
+    if (phase.type !== 'zazen') return;
+    // With the stick offered, a lone touch requests it; otherwise a touch is
+    // simply the way to find pause and end.
+    if (kyosakuAvailable()){ if (!kyosakuCeremonyActive) kyosakuCeremony(); }
+    else showControls();
   }
 
   // The request → bow → strike exchange (~6.5s). The active timer display fades
@@ -1980,14 +2049,14 @@
   // Controls are summoned by double-tap and retire on their own after a few
   // seconds — unless paused, when they stay so Resume remains within reach.
   let controlsHideTimer = null;
-  function scheduleControlsHide(){
+  function scheduleControlsHide(ms){
     clearTimeout(controlsHideTimer);
-    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, 4000);
+    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, ms || 4000);
   }
-  function showControls(){
+  function showControls(ms){
     el('controlsRow').classList.add('show');
     clearTimeout(controlsHideTimer);
-    if (!paused) scheduleControlsHide();
+    if (!paused) scheduleControlsHide(ms);
   }
   // Whole-screen tap during practice, so eyes can stay closed. A lone tap is
   // the kyōsaku request (or the settle skip); two taps within 300ms summon
@@ -2018,6 +2087,17 @@
     renderSettings();
     // reflect on home immediately next time it's shown
   };
+  el('kyosakuToggle').onclick = ()=>{
+    kyosakuOn = !kyosakuOn;
+    sSet(KYOSAKU_KEY, kyosakuOn ? '1' : '0');
+    renderSettings();
+  };
+  // A touch on the closing screen skips ahead to the vows (buttons keep
+  // their own actions).
+  el('closing').addEventListener('click', (e)=>{
+    if (e.target.closest('button')) return;
+    skipClosing();
+  });
   el('addPastSit').onclick = ()=>{
     const arr = load().slice();
     arr.push({ d: dayStr(new Date()), m: 0, t: Date.now(), past: true });
@@ -2102,6 +2182,8 @@
     tog.classList.toggle('on', testingMode);
     el('testState').textContent = testingMode ? 'on' : 'off';
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
+    el('kyosakuToggle').classList.toggle('on', kyosakuOn);
+    el('kyosakuState').textContent = kyosakuOn ? 'on' : 'off';
     el('pastSitState').textContent = totalSits() + ' recorded';
     renderDisplayRow();
     // Build vow editor: four fields, each labeled with the traditional vow it

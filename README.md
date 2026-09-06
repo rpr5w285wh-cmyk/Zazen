@@ -13,8 +13,9 @@ and the progression rests.
 
 Each sitting opens with the han (the wooden board that calls to the hall),
 begins and ends with the keisu bell, and closes with the four bodhisattva
-vows — which you can personalize in settings. On longer sits, a tap requests
-the kyōsaku.
+vows — which you can personalize in settings. Turn on the kyōsaku in settings
+and a single touch during the sit requests the stick; otherwise a touch simply
+shows pause and end.
 
 Time is shown as a ring, an hourglass, or a burning incense stick.
 
