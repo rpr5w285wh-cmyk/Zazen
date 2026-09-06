@@ -120,7 +120,11 @@
   #vowEditor textarea { width: 100%; background: rgba(205,189,157,0.05); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font-family: 'EB Garamond', serif; font-size: 0.95rem; font-style: italic; padding: 9px 11px; margin-bottom: 14px; resize: none; line-height: 1.4; }
   .vow-field-label { color: var(--ink-faint); font-size: 0.78rem; font-style: italic; letter-spacing: 0.03em; margin-bottom: 5px; line-height: 1.4; }
   #vowEditor textarea:focus { outline: none; border-color: var(--ember-soft); }
-  .vow-actions { display: flex; gap: 18px; margin-top: 6px; }
+  .vow-actions { display: flex; gap: 18px; margin-top: 6px; flex-wrap: wrap; }
+  /* A two-step action: the first tap arms it, the second within a few seconds acts. */
+  .ghost-link.armed { color: var(--ember); border-bottom: 1px solid var(--ember-soft); }
+  .date-field { width: 100%; max-width: 220px; background: rgba(205,189,157,0.05); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font-family: inherit; font-size: 0.95rem; padding: 9px 11px; min-height: 44px; color-scheme: dark; margin-bottom: 4px; }
+  .date-field:focus { outline: none; border-color: var(--ember-soft); }
 
   /* ---- Practice ---- */
   .phase-label { color: var(--ember); font-size: 0.8rem; letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 8px; height: 1.2em; transition: opacity 0.8s; }
@@ -271,8 +275,14 @@
       <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
     </div>
     <div class="setting-block">
-      <button class="toggle-row" id="addPastSit"><span class="tog-label">Mark a past sitting</span><span class="tog-state" id="pastSitState"></span></button>
-      <div class="setting-note">Adds one sitting to the record, for sits lost to a reset or done away from the app.</div>
+      <div class="tog-label" style="margin-bottom:10px;">Mark a past sitting</div>
+      <div class="setting-note" style="margin-bottom:14px;">For a sit lost to a reset, or done away from the app. <span id="pastSitState"></span></div>
+      <input type="date" id="pastDate" class="date-field" aria-label="date of the sitting">
+      <div class="adjust" id="pastLenRow" style="margin-bottom:0;"></div>
+      <div class="vow-actions" style="margin-top:0;">
+        <button class="ghost-link" id="addPastSit">add to the record</button>
+        <button class="ghost-link disp-hidden" id="pastUndo">undo</button>
+      </div>
     </div>
     <div class="setting-block">
       <div class="tog-label" style="margin-bottom:10px;">Timer display</div>
@@ -285,10 +295,10 @@
     </div>
     <div class="setting-block">
       <div class="tog-label" style="margin-bottom:10px;">The vows</div>
-      <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it.</div>
+      <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it. Changes are kept as you type.</div>
       <div id="vowEditor"></div>
       <div class="vow-actions">
-        <button class="ghost-link" id="vowSave">save</button>
+        <span class="setting-note" id="vowSaved" style="margin:0;min-width:3.5em;align-self:center;" aria-live="polite"></span>
         <button class="ghost-link" id="vowReset">restore traditional vows</button>
       </div>
     </div>
@@ -428,7 +438,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '37';
+  const APP_VERSION = '38';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -732,10 +742,13 @@
   }
   function load() { return sessionsCache; }
   function save(arr) { sessionsCache = arr; sSet(KEY, JSON.stringify(arr)); }
-  function record(minutes) {
+  // `at` dates the sitting by when it ended (a sit that finished while the
+  // app was closed belongs to that day, not to the day it was noticed).
+  function record(minutes, at) {
     if (testingMode) return;   // testing sits leave the real record untouched
     const arr = load().slice();
-    arr.push({ d: dayStr(new Date()), m: minutes, t: Date.now() });
+    const when = at || Date.now();
+    arr.push({ d: dayStr(new Date(when)), m: minutes, t: when });
     save(arr);
   }
   function totalSits() { return load().length; }
@@ -1300,11 +1313,55 @@
   let elapsedTotal = 0;
   let timer = null;
   let paused = false;
+  let sessionLive = false;    // true from Begin until the closing bell or End
+  let resumeNotice = false;   // a resumed sit shows a one-line notice until touched
 
   // ---------- Elements ----------
   const el = id => document.getElementById(id);
   const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), log: el('log'), settings: el('settings') };
-  function show(name) { if(name!=='closing') stopCloseGlyph(); Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+  function show(name) {
+    if(name!=='closing') stopCloseGlyph();
+    Object.values(screens).forEach(s=>s.classList.remove('active'));
+    screens[name].classList.add('active');
+    syncHistory(name);
+  }
+
+  // ---------- History: Back returns home, and never abandons a sit ----------
+  // Each screen away from home is a history entry, so the Android Back
+  // gesture (or a browser's Back) steps back to home instead of leaving the
+  // app. During a sit, Back brings pause and end into reach instead.
+  let navFromPop = false;
+  function syncHistory(name){
+    try {
+      if (navFromPop) return;
+      const cur = history.state && history.state.screen;
+      if (cur === name) return;
+      if (name === 'home') history.replaceState({ screen: 'home' }, '');
+      else if (name === 'closing' && cur === 'practice') history.replaceState({ screen: 'closing' }, '');   // stands in for the sit
+      else history.pushState({ screen: name }, '');
+    } catch(e){}
+  }
+  function goHome(){
+    renderHome();
+    let cur = null;
+    try { cur = history.state && history.state.screen; } catch(e){}
+    if (cur && cur !== 'home' && history.length > 1) history.back();   // popstate shows home
+    else show('home');
+  }
+  window.addEventListener('popstate', (e)=>{
+    const target = (e.state && e.state.screen) || 'home';
+    if (sessionLive && target !== 'practice'){
+      try { history.pushState({ screen: 'practice' }, ''); } catch(err){}
+      showControls();
+      return;
+    }
+    navFromPop = true;
+    try {
+      if (target === 'log'){ renderLog(); show('log'); }
+      else if (target === 'settings'){ renderSettings(); show('settings'); }
+      else { exitFullscreen(); renderHome(); show('home'); }   // practice/closing are never re-entered by history
+    } finally { navFromPop = false; }
+  });
 
   // ---------- Home rendering ----------
   function fmtMin(sec){ return Math.round(sec/60); }
@@ -1405,6 +1462,8 @@
     totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
     paused = false;
     sessionStartAt = Date.now();
+    sessionLive = true;
+    resumeNotice = false;
     el('pauseBtn').textContent = 'Pause';
     // Show pause and end for a few seconds, so their existence is learned
     // before the screen goes bare; a touch brings them back at any time.
@@ -1483,6 +1542,7 @@
     }
     applyDisplayVisibility();
     drawProgress(true);
+    saveLive();   // the sit survives a reload or the app being put away
   }
 
   function startSettleCues(cues){
@@ -1888,21 +1948,22 @@
     keisuRollDown();
     const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
     record(sitMinutes);
-    let note;
-    if (testingMode) {
-      note = `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
-    } else {
-      const n = totalSits();
-      const nx = nextStage();
-      note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
-      if (fixedMinutes > 0){ note += `<br>Held steady. Return tomorrow.`; }
-      else if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
-      else { note += `<br>The full rhythm is yours now.`; }
-    }
-    el('sitSummary').innerHTML = note;
+    el('sitSummary').innerHTML = finishSummary(sitMinutes);
+    sessionLive = false; clearLive();
     releaseWakeLock();
     renderVows();
     show('closing');
+  }
+  // The closing line for a completed sit (after it has been recorded).
+  function finishSummary(sitMinutes){
+    if (testingMode) return `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
+    const n = totalSits();
+    const nx = nextStage();
+    let note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
+    if (fixedMinutes > 0){ note += `<br>Held steady. Return tomorrow.`; }
+    else if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
+    else { note += `<br>The full rhythm is yours now.`; }
+    return note;
   }
 
   function endEarly(){
@@ -1922,9 +1983,84 @@
         ? `${zMin} minutes. Ended early, which is also practice.<br>The ${ordinal(n)} sitting.`
         : `A brief sitting. No mark made; begin again whenever.`;
     }
+    sessionLive = false; clearLive();
     releaseWakeLock();
     renderVows();
     show('closing');
+  }
+
+  // ---------- The live sit, kept across a reload or the app being put away ----------
+  // Enough to pick the sit up by wall clock: the plan, where we are in it,
+  // and when the current phase ends. Written at each phase start and on
+  // pause/resume; cleared when the sit closes or is ended.
+  const LIVE_KEY = 'zazen.live.v1';
+  function saveLive(){
+    if (!sessionLive) return;
+    sSet(LIVE_KEY, JSON.stringify({ plan, phaseIdx, phaseEndAt, paused, phaseRemain,
+      sessionStartAt, testingMode, activeDisplay, savedAt: Date.now() }));
+  }
+  function clearLive(){ try { localStorage.removeItem(LIVE_KEY); } catch(e){} }
+  function resumeLive(){
+    const raw = sGet(LIVE_KEY);
+    if (!raw) return;
+    let s = null;
+    try { s = JSON.parse(raw); } catch(e){}
+    if (!s || !Array.isArray(s.plan) || !s.plan.length || !(s.phaseIdx < s.plan.length)){ clearLive(); return; }
+    const now = Date.now();
+    plan = s.plan; phaseIdx = s.phaseIdx | 0;
+    testingMode = !!s.testingMode;
+    sessionStartAt = s.sessionStartAt || now;
+    activeDisplay = s.activeDisplay || 'ring';
+    totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
+    if (s.paused){
+      paused = true;
+      phaseRemain = Math.max(0, s.phaseRemain | 0);
+      phaseEndAt = now + phaseRemain * 1000;
+    } else {
+      // Walk forward by wall clock through any phases that ended while away.
+      let endAt = Number(s.phaseEndAt);
+      if (!isFinite(endAt) || endAt <= 0){ clearLive(); return; }
+      while (phaseIdx < plan.length && now >= endAt){
+        phaseIdx++;
+        if (phaseIdx < plan.length) endAt += plan[phaseIdx].sec * 1000;
+      }
+      if (phaseIdx >= plan.length){
+        // The sit finished on its own while the app was away. Mark it, dated
+        // by its end; show the closing if that was recent, else just home.
+        clearLive();
+        const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
+        record(sitMinutes, endAt);
+        if (now - endAt < 60 * 60 * 1000){
+          el('sitSummary').innerHTML = finishSummary(sitMinutes);
+          renderVows();
+          show('closing');
+        } else {
+          renderHome();
+        }
+        return;
+      }
+      paused = false;
+      phaseEndAt = endAt;
+      phaseRemain = Math.max(0, Math.round((endAt - now) / 1000));
+    }
+    sessionLive = true;
+    resumeNotice = true;
+    resetAsh();
+    const phase = plan[phaseIdx];
+    el('phaseLabel').textContent = phase.type === 'zazen' ? '' : PHASE_META[phase.type].label;
+    el('skipHint').classList.toggle('disp-hidden', phase.type !== 'settle');
+    el('orbWrap').style.cursor = phase.type === 'settle' ? 'pointer' : 'default';
+    // The bell needs a touch to sound again after a reload; say so once.
+    el('phaseGuide').textContent = 'The sitting continues. Touch once, so the bell can sound.';
+    el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+    applyDisplayVisibility();
+    show('practice');
+    showControls(paused ? undefined : CONTROLS_INTRO_MS);
+    if (paused) clearTimeout(controlsHideTimer);
+    acquireWakeLock();
+    drawProgress(true);
+    runTimer();
+    saveLive();
   }
 
   function elapsedZazenMinutes(){
@@ -1986,6 +2122,7 @@
     }
     el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
     drawProgress();
+    saveLive();
   };
   el('endBtn').onclick = endEarly;
   // When the screen wakes or the tab refocuses, audio may be suspended and the
@@ -1994,8 +2131,8 @@
   document.addEventListener('visibilitychange', ()=>{
     if (document.visibilityState === 'visible') {
       if (actx && actx.state === 'suspended') actx.resume();
-      const sessionLive = timer && phaseIdx < plan.length;
-      if (sessionLive) {
+      const live = timer && phaseIdx < plan.length;
+      if (live) {
         acquireWakeLock();   // iOS releases the lock on backgrounding
         if (!paused) tick();
       }
@@ -2063,6 +2200,10 @@
   // the pause/end controls instead.
   let tapTimer = null;
   el('practice').addEventListener('click', (e)=>{
+    // Any touch is a user gesture: let it wake the audio context, so a sit
+    // resumed after a reload gets its bell back.
+    try { ensureAudio(); } catch(err){}
+    if (resumeNotice){ resumeNotice = false; if (plan[phaseIdx] && plan[phaseIdx].type === 'zazen') el('phaseGuide').textContent = ''; }
     // Ignore taps on the controls themselves so they keep their own actions.
     if (e.target.closest('button')) return;
     if (tapTimer){
@@ -2081,7 +2222,7 @@
   };
   el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
-  el('settingsReturn').onclick = ()=>{ renderHome(); show('home'); };
+  el('settingsReturn').onclick = ()=>{ flushVowSave(); goHome(); };
   el('testToggle').onclick = ()=>{
     testingMode = !testingMode;
     renderSettings();
@@ -2098,11 +2239,49 @@
     if (e.target.closest('button')) return;
     skipClosing();
   });
+  // A past sitting takes a date and a length, and can be taken back for a
+  // few seconds afterwards.
+  let pastMinutes = 0;          // 0 = follow the current sitting length
+  let lastPastEntry = null;
+  let pastUndoTimer = null;
+  function renderPastLenRow(){
+    const row = el('pastLenRow');
+    row.innerHTML = '';
+    const chosen = pastMinutes || fixedMinutes;
+    FIXED_CHOICES.forEach(m=>{
+      const b = document.createElement('button');
+      b.textContent = `${m} min`;
+      b.setAttribute('aria-pressed', String(chosen === m));
+      if (chosen === m) b.classList.add('on');
+      b.onclick = ()=>{ pastMinutes = m; renderPastLenRow(); };
+      row.appendChild(b);
+    });
+  }
   el('addPastSit').onclick = ()=>{
+    const date = el('pastDate').value;
+    const today = dayStr(new Date());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today){
+      el('pastSitState').textContent = 'Choose a day up to today.';
+      return;
+    }
+    const entry = { d: date, m: pastMinutes || fixedMinutes, t: Date.now(), past: true };
     const arr = load().slice();
-    arr.push({ d: dayStr(new Date()), m: 0, t: Date.now(), past: true });
+    arr.push(entry);
+    arr.sort((a,b)=> a.d < b.d ? -1 : a.d > b.d ? 1 : (a.t||0) - (b.t||0));
     save(arr);
-    renderSettings();
+    lastPastEntry = entry;
+    el('pastSitState').textContent = `Added ${entry.m} min on ${date}. ${totalSits()} recorded.`;
+    el('pastUndo').classList.remove('disp-hidden');
+    clearTimeout(pastUndoTimer);
+    pastUndoTimer = setTimeout(()=>{ el('pastUndo').classList.add('disp-hidden'); lastPastEntry = null; }, 8000);
+  };
+  el('pastUndo').onclick = ()=>{
+    if (!lastPastEntry) return;
+    save(load().filter(s => s !== lastPastEntry));
+    lastPastEntry = null;
+    clearTimeout(pastUndoTimer);
+    el('pastUndo').classList.add('disp-hidden');
+    el('pastSitState').textContent = `Taken back. ${totalSits()} recorded.`;
   };
   el('exportBtn').onclick = ()=>{
     const payload = { v: 1, sessions: load(), vows: loadVows() };
@@ -2115,9 +2294,28 @@
     el('exportBtn').textContent = 'copied';
     setTimeout(()=>{ el('exportBtn').textContent = 'copy backup'; }, 1400);
   };
+  // Two-step actions for anything that overwrites the record or the vows:
+  // the first tap arms the button, a second tap within a few seconds acts.
+  function armConfirm(btn, armedText, idleText, action){
+    if (btn.dataset.armed){
+      clearTimeout(btn._armTimer);
+      delete btn.dataset.armed;
+      btn.classList.remove('armed');
+      btn.textContent = idleText;
+      action();
+      return;
+    }
+    btn.dataset.armed = '1';
+    btn.classList.add('armed');
+    btn.textContent = armedText;
+    btn._armTimer = setTimeout(()=>{ delete btn.dataset.armed; btn.classList.remove('armed'); btn.textContent = idleText; }, 4000);
+  }
   el('importBtn').onclick = ()=>{
     const raw = el('backupBox').value.trim();
     if (!raw){ el('importBtn').textContent = 'paste a code first'; setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600); return; }
+    armConfirm(el('importBtn'), 'tap again to replace the record', 'restore from backup', ()=>importBackup(raw));
+  };
+  function importBackup(raw){
     try {
       const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
       // Keep only well-formed entries so a corrupted code can't fill the
@@ -2137,20 +2335,33 @@
       el('importBtn').textContent = 'invalid code';
       setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600);
     }
-  };
-  el('vowSave').onclick = ()=>{
-    // Keep all four slots (empty = omitted) so each line stays under its
-    // traditional-vow label in the editor and its beat in the closing glyph.
-    const lines = Array.from(el('vowEditor').querySelectorAll('textarea'))
-      .map(t=>t.value.trim());
-    if (lines.some(t=>t.length)) { saveVows(lines); }
-    else { saveVows(DEFAULT_VOWS.slice()); }
-    el('vowSave').textContent = 'saved';
-    setTimeout(()=>{ el('vowSave').textContent = 'save'; }, 1400);
-  };
+  }
+  // The vows save themselves as you type (a short debounce), and are flushed
+  // on return. All four slots are kept (empty = omitted) so each line stays
+  // under its traditional-vow label and its beat in the closing glyph. Four
+  // empty lines mean a silent closing.
+  let vowSaveTimer = null;
+  function saveVowsFromEditor(){
+    const lines = Array.from(el('vowEditor').querySelectorAll('textarea')).map(t=>t.value.trim());
+    saveVows(lines);
+    const flash = el('vowSaved');
+    flash.textContent = 'saved';
+    clearTimeout(flash._t);
+    flash._t = setTimeout(()=>{ flash.textContent = ''; }, 1400);
+  }
+  function queueVowSave(){
+    clearTimeout(vowSaveTimer);
+    vowSaveTimer = setTimeout(()=>{ vowSaveTimer = null; saveVowsFromEditor(); }, 600);
+  }
+  function flushVowSave(){
+    if (vowSaveTimer){ clearTimeout(vowSaveTimer); vowSaveTimer = null; saveVowsFromEditor(); }
+  }
   el('vowReset').onclick = ()=>{
-    saveVows(DEFAULT_VOWS.slice());
-    renderSettings();
+    armConfirm(el('vowReset'), 'tap again to replace your vows', 'restore traditional vows', ()=>{
+      clearTimeout(vowSaveTimer); vowSaveTimer = null;
+      saveVows(DEFAULT_VOWS.slice());
+      renderSettings();
+    });
   };
 
   function renderDisplayRow(){
@@ -2184,7 +2395,11 @@
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
     el('kyosakuToggle').classList.toggle('on', kyosakuOn);
     el('kyosakuState').textContent = kyosakuOn ? 'on' : 'off';
-    el('pastSitState').textContent = totalSits() + ' recorded';
+    el('pastSitState').textContent = totalSits() + ' recorded.';
+    const pd = el('pastDate');
+    pd.max = dayStr(new Date());
+    if (!pd.value) pd.value = pd.max;
+    renderPastLenRow();
     renderDisplayRow();
     // Build vow editor: four fields, each labeled with the traditional vow it
     // corresponds to, with the practitioner's custom line as the editable value.
@@ -2200,17 +2415,20 @@
       ta.rows = 2;
       ta.value = vows[i] || '';
       ta.placeholder = 'your vow, or leave empty';
+      ta.addEventListener('input', queueVowSave);
       ed.appendChild(ta);
     }
   }
-  el('logReturn').onclick = ()=>{ renderHome(); show('home'); };
-  el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
+  el('logReturn').onclick = goHome;
+  el('closeReturn').onclick = ()=>{ exitFullscreen(); goHome(); };
 
   // init: paint immediately with empty caches, then re-render once the
   // persistent store has loaded.
   try { el('versionMark').textContent = 'v' + APP_VERSION + ' · standalone'; } catch(e){}
+  try { history.replaceState({ screen: 'home' }, ''); } catch(e){}
   renderHome();
   initStorage();
+  resumeLive();   // pick up a sit that a reload or the OS interrupted
 })();
 </script>
 </body>
