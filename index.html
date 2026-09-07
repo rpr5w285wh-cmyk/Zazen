@@ -93,10 +93,6 @@
   .stage-name { color: var(--ember); font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 6px; }
   .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 36px; max-width: 320px; }
 
-  .plan { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 34px; color: var(--ink-faint); font-size: 0.82rem; letter-spacing: 0.08em; }
-  .plan .seg { color: var(--ink-dim); }
-  .plan .dot { color: var(--ink-faint); margin: 0 2px; }
-
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
   .begin {
@@ -187,7 +183,6 @@
   .ring, .hourglass, .incense { transition: opacity 1s ease; }
   .ceremony-dim { opacity: 0 !important; }
 
-  .controls button#cycleBtn { font-size: 1.1rem; letter-spacing: 0; padding: 12px 10px; }
 
 
   /* The controls stay out of sight while sitting; a double-tap summons them
@@ -416,7 +411,6 @@
       </svg>
     </div>
     <div class="controls" id="controlsRow">
-      <button id="cycleBtn" class="disp-hidden">⊙</button>
       <button id="pauseBtn">Pause</button>
       <button id="endBtn">End</button>
     </div>
@@ -468,7 +462,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '40';
+  const APP_VERSION = '41';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -600,38 +594,8 @@
     } catch(e){}
   }
 
-  // ---- Inkin: small handbell on a handle. Bright, high, shorter shimmer. ----
-  function inkin(strikes = 1, gap = 1.4) {
-    try {
-      ensureAudio();
-      for (let s = 0; s < strikes; s++) {
-        const t = actx.currentTime + s * gap;
-        const f0 = 660; // much higher than the keisu
-        const out = actx.createGain(); out.gain.value = 0.5;
-        out.connect(actx.destination);
-        // Bright but inharmonic; shorter decays than the big bowl.
-        const partials = [
-          [1.00, 0.5, 3.2,  0],
-          [2.74, 0.34, 2.4,  6],
-          [4.05, 0.20, 1.6, -7],
-          [5.80, 0.10, 1.0,  9],
-        ];
-        partials.forEach(([ratio, level, decay, detune]) => {
-          const o = actx.createOscillator(); const g = actx.createGain();
-          o.type = 'sine'; o.frequency.value = f0 * ratio; o.detune.value = detune;
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(level, t + 0.006);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-          o.connect(g); g.connect(out);
-          o.start(t); o.stop(t + decay + 0.05);
-        });
-      }
-    } catch(e){}
-  }
-
-  // ---- Taku / clappers: two hardwood blocks struck. A sharp, dry crack. ----
   // The kyōsaku ("encouragement stick") strike: a single sharp, woody crack —
-  // harder and a touch lower than the taku clappers, so it reads as the stick.
+  // harder and a touch lower than the han, so it reads as the stick.
   function kyosaku(){
     try {
       ensureAudio();
@@ -658,37 +622,6 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
       o.connect(g); g.connect(out);
       o.start(t); o.stop(t + 0.18);
-    } catch(e){}
-  }
-
-  function taku(strikes = 1, gap = 0.5) {
-    try {
-      ensureAudio();
-      for (let s = 0; s < strikes; s++) {
-        const t = actx.currentTime + s * gap;
-        const out = actx.createGain(); out.gain.value = 0.6;
-        out.connect(actx.destination);
-        // Very short filtered-noise burst + a brief woody resonance.
-        const len = 0.05;
-        const buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
-        const noise = actx.createBufferSource(); noise.buffer = buf;
-        const bp = actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2200; bp.Q.value=1.0;
-        const ng = actx.createGain();
-        ng.gain.setValueAtTime(0.7, t);
-        ng.gain.exponentialRampToValueAtTime(0.0001, t + len);
-        noise.connect(bp); bp.connect(ng); ng.connect(out);
-        noise.start(t); noise.stop(t + len);
-        // A short pitched "knock" for the wood body.
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='triangle'; o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.4, t + 0.003);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-        o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + 0.14);
-      }
     } catch(e){}
   }
 
@@ -735,9 +668,6 @@
     } catch(e){}
   }
 
-  // Back-compat shim: existing calls to bell() route to the keisu.
-  function bell(strikes = 1, gap = 2.4) { keisu(strikes, gap); }
-
   // Closing roll-down: three keisu strikes, each a touch later and softer,
   // the traditional way a sitting is released.
   function keisuRollDown() {
@@ -754,11 +684,10 @@
 
   // ---------- Storage (light: dates, durations, count) ----------
   const KEY = 'zazen.sessions.v1';
-  const FIXED_KEY = 'zazen.fixed.v1';   // fixed sitting length in minutes (0=off)
+  const FIXED_KEY = 'zazen.fixed.v1';   // the chosen sitting length in minutes
   const FIXED_CHOICES = [1, 3, 5, 10, 15, 20];  // the lengths offered on the home screen
   let testingMode = false;   // when true, sittings are NOT recorded
-  let fixedMinutes = 5;      // fixed length; 5 is the default sit (0 = the old
-                             // progression path, kept in code but no longer offered)
+  let fixedMinutes = 5;      // the chosen sitting length; five is the default
   // ---------- Persistence (standalone: localStorage is primary) ----------
   // In-memory caches keep the rest of the app synchronous; localStorage is the
   // durable store for a home-screen web app on a stable origin.
@@ -945,7 +874,6 @@
   // ---------- Closing glyph: one continuous morphing symbol ----------
   // bolt (pain) -> heart (coming back) -> door (the doorway) -> path (the way).
   // The first pass is paced to the four vows rising in; then it loops freely.
-  const VOW_STEP = 4.0;   // (retained) seconds between vow beats, for reference
   let cgRAF = null;
   let closeGlyphTimer = null;
 
@@ -1240,46 +1168,10 @@
     const ember = el('closeEmber'); if (ember) ember.classList.remove('show');
   }
 
-  // ---------- Progression: depth unlocked by accumulated sits ----------
-  // Each stage defines the guidance + a default structure.
-  const STAGES = [
-    { min: 0,  name: "One Minute",
-      desc: "Begin small. One minute of sitting. Count each exhalation, one through ten.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:60}] },
-    { min: 3,  name: "Two Minutes",
-      desc: "Two minutes now. Stay with the counting.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:120}] },
-    { min: 6,  name: "Three Minutes",
-      desc: "Three minutes. The counting steadies you.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:180}] },
-    { min: 10, name: "Four Minutes",
-      desc: "Four minutes. Let the counting grow quiet and easy.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:240}] },
-    { min: 15, name: "Five Minutes",
-      desc: "Five minutes. A full sitting. Count, and return whenever you drift.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:300}] },
-    { min: 22, name: "Following",
-      desc: "Let counting fall away. Simply follow the breath as it moves, without holding it.",
-      method: "follow",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:420}] },
-    { min: 32, name: "Two Periods",
-      desc: "Two sits now, bridged by slow walking. Let kinhin carry the stillness with you.",
-      method: "follow",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:420},{type:'kinhin',sec:180},{type:'zazen',sec:420}] },
-    { min: 50, name: "Shikantaza",
-      desc: "Just sitting. No object, no technique. Thoughts arise and pass; you neither chase nor push.",
-      method: "open",
-      structure: [{type:'settle',sec:30},{type:'zazen',sec:600},{type:'kinhin',sec:180},{type:'zazen',sec:600}] },
-  ];
-
-  // A stage built from a fixed chosen length, used when fixedMinutes > 0 so the
-  // app holds one length instead of advancing through the progression.
-  function fixedStage(){
+  // ---------- The sitting ----------
+  // One length, chosen on the home screen. The method follows the length:
+  // counting up to five minutes, following the breath at ten, shikantaza beyond.
+  function currentStage(){
     const m = fixedMinutes;
     const method = m <= 5 ? 'count' : (m <= 10 ? 'follow' : 'open');
     const methodDesc = {
@@ -1288,30 +1180,15 @@
       open:   `Just sitting. No object, no technique.`,
     };
     return {
-      min: 0, fixed: true, name: `${m} ${m===1?'Minute':'Minutes'}`,
+      name: `${m} ${m===1?'Minute':'Minutes'}`,
       desc: methodDesc[method], method,
       structure: [{type:'settle',sec:25},{type:'zazen',sec:m*60}],
     };
   }
 
-  function currentStage() {
-    if (fixedMinutes > 0) return fixedStage();
-    const n = totalSits();
-    let s = STAGES[0];
-    for (const st of STAGES) if (n >= st.min) s = st;
-    return s;
-  }
-  function nextStage() {
-    if (fixedMinutes > 0) return null;   // no "next" while a length is held
-    const n = totalSits();
-    for (const st of STAGES) if (n < st.min) return st;
-    return null;
-  }
-
   const PHASE_META = {
     settle: { label: "Settling", guide: "Arrive. Find the posture. Let the body grow still before the bell." },
-    zazen:  { label: "Zazen",   guide: null }, // guide filled from stage method
-    kinhin: { label: "Kinhin",  guide: "Rise slowly. Walk at half a breath per step, hands at the chest. Carry the stillness." },
+    zazen:  { label: "Zazen",   guide: null }, // the sit itself is silent
   };
 
   // Settling cues rotate while the settle phase runs. First is always the
@@ -1341,14 +1218,11 @@
   const CONTROLS_INTRO_MS = 5000;    // how long pause/end show at a sit's start
 
   // ---------- App state ----------
-  let userStructure = null;   // overrides stage structure if adjusted
   let plan = [];              // active phase list
   let phaseIdx = 0;
   let phaseRemain = 0;
   let phaseEndAt = 0;         // wall-clock ms when the current phase ends
   let sessionStartAt = 0;     // wall-clock ms when sitting began (for elapsed)
-  let totalPlanned = 0;
-  let elapsedTotal = 0;
   let timer = null;
   let paused = false;
   let sessionLive = false;    // true from Begin until the closing bell or End
@@ -1430,14 +1304,6 @@
     // stage
     el('stageName').textContent = stage.name;
     el('stageDesc').textContent = stage.desc;
-    const nx = nextStage();
-    if (nx) {
-      const remaining = nx.min - n;
-      const note = document.createElement('span');
-      note.style.cssText = 'display:block;margin-top:8px;color:var(--ink-faint);font-size:0.85rem;';
-      note.textContent = `${remaining} more ${remaining === 1 ? 'sitting' : 'sittings'} until ${nx.name}.`;
-      el('stageDesc').appendChild(note);
-    }
 
     renderAdjust(stage);
   }
@@ -1457,27 +1323,17 @@
       b.onclick = ()=>{
         fixedMinutes = m;
         sSet(FIXED_KEY, String(m));
-        userStructure = null;
         renderHome();
       };
       row.appendChild(b);
     });
   }
 
-  function scaleStructure(struct, factor){
-    return struct.map(p=>{
-      if (p.type==='settle') return {...p};
-      return { ...p, sec: Math.max(60, Math.round(p.sec*factor/60)*60) };
-    });
-  }
-
   // ---------- Practice flow ----------
   function startPractice(){
     const stage = currentStage();
-    plan = userStructure || planFromStage(stage);
+    plan = planFromStage(stage);
     phaseIdx = 0;
-    elapsedTotal = 0;
-    totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
     paused = false;
     sessionStartAt = Date.now();
     sessionLive = true;
@@ -1529,34 +1385,23 @@
     phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
     resetAsh();   // fresh stick for this phase
     const meta = PHASE_META[phase.type];
-    // The sit itself is unlabeled — no title over the stillness. Settling and
-    // kinhin keep their labels as gentle guidance.
+    // The sit itself is unlabeled — no title over the stillness. Settling
+    // keeps its label as gentle guidance.
     el('phaseLabel').textContent = phase.type === 'zazen' ? '' : meta.label;
     stopSettleCues();
     el('skipHint').classList.toggle('disp-hidden', !isSettle);
     el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
     if (isSettle) {
       startSettleCues(cues);
-    } else if (phase.type === 'kinhin') {
-      el('phaseGuide').textContent = meta.guide;
     } else {
       // zazen: silence. No guidance text to disturb the sitting.
       el('phaseGuide').textContent = '';
     }
-    // Opening signals follow tradition. The settle phase already opened with
-    // the han in startPractice, so we only sound openings for sits and walks.
-    if (phaseIdx > 0) {
-      if (phase.type === 'zazen') {
-        // Shijosho: two strikes of the keisu to begin a sitting.
-        keisu(2, 2.6);
-        showControls(CONTROLS_INTRO_MS);   // a last glimpse of pause and end
-      } else if (phase.type === 'kinhin') {
-        // Two sharp taku to signal rising into walking meditation.
-        taku(2, 0.5);
-      }
-    } else if (phase.type === 'zazen') {
-      // First phase is a bare zazen (no settle in this structure): still open it.
+    // Opening signal: the settle already opened with the han in startPractice;
+    // shijosho, two strikes of the keisu, begins the sitting itself.
+    if (phase.type === 'zazen') {
       keisu(2, 2.6);
+      showControls(CONTROLS_INTRO_MS);   // a last glimpse of pause and end
     }
     applyDisplayVisibility();
     drawProgress(true);
@@ -1611,17 +1456,9 @@
   }
 
   function advancePhase(){
-    const ending = plan[phaseIdx];
     phaseIdx++;
-    // Closing signal for the phase that just finished.
-    if (ending && ending.type === 'zazen' && phaseIdx < plan.length) {
-      // A single inkin ends the sitting (its brightness lifts you out of stillness).
-      inkin(1);
-    }
     if (phaseIdx >= plan.length){ finish(); return; }
-    // The next phase's opening signal is sounded inside startPhase.
-    // Small delay so a closing inkin isn't stepped on by the next opening.
-    setTimeout(startPhase, ending && ending.type === 'zazen' ? 1400 : 0);
+    startPhase();   // sounds its own opening signal
   }
 
   // Tapping the orb during settling skips the rest of the arriving phase and
@@ -1982,12 +1819,7 @@
   function finishSummary(sitMinutes){
     if (testingMode) return `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
     const n = totalSits();
-    const nx = nextStage();
-    let note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
-    if (fixedMinutes > 0){ note += `<br>Held steady. Return tomorrow.`; }
-    else if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
-    else { note += `<br>The full rhythm is yours now.`; }
-    return note;
+    return `${sitMinutes} ${plural(sitMinutes,'minute')} of zazen. The ${ordinal(n)} sitting.<br>Held steady. Return tomorrow.`;
   }
 
   function endEarly(){
@@ -2035,7 +1867,6 @@
     testingMode = !!s.testingMode;
     sessionStartAt = s.sessionStartAt || now;
     activeDisplay = s.activeDisplay || 'ring';
-    totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
     if (s.paused){
       paused = true;
       phaseRemain = Math.max(0, s.phaseRemain | 0);
@@ -2257,13 +2088,6 @@
     }
     tapTimer = setTimeout(()=>{ tapTimer = null; practiceTap(); }, 300);
   });
-  el('cycleBtn').onclick = ()=>{
-    const order = incenseAvailable() ? ['ring','glass','incense'] : ['ring','glass'];
-    const idx = order.indexOf(activeDisplay);
-    activeDisplay = order[(idx + 1) % order.length];
-    applyDisplayVisibility();
-    drawProgress(true);
-  };
   el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
   el('settingsReturn').onclick = ()=>{ flushVowSave(); goHome(); };

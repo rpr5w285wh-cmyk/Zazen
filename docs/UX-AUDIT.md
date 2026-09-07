@@ -12,6 +12,21 @@ One caveat on the screenshots: the audit sandbox could not reach Google Fonts,
 so every screenshot shows the fallback serif (Georgia). That is itself finding
 no. 6, and it is exactly what an offline or flaky-network visitor sees.
 
+## Status
+
+Fixes landed on this branch after the audit, by finding number:
+
+| Commit | Findings addressed |
+|---|---|
+| Make the sit easier to leave and its controls easier to find | 1, 2, 3, 7, 11 |
+| Stop losing the practitioner's data | 4, 5, 13, 16 |
+| Self-host the fonts, allow zoom, honour reduced motion | 20, 21, 22, 24, 25 |
+| Tidy the copy and layout, and give screen readers a structure | 8, 9, 10, 12, 14, 15, 17, 18, 23, 26, 27 |
+| Remove the dead progression and rewrite the README | 28 |
+
+Still open: 6 (a bell test and a haptic fallback), and 19 is moot now that
+past sittings carry real minutes.
+
 ## What works well
 
 - The atmosphere is coherent and disciplined: one accent, one type family, no chrome.
