@@ -34,6 +34,10 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Headings carry structure for screen readers; their look comes from the
+     classes below, not from being headings. */
+  h1, h2 { font-size: inherit; font-weight: inherit; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
   html, body { height: 100%; overflow: hidden; }
 
@@ -109,7 +113,9 @@
   }
   .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
 
-  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 320px; }
+  /* Option chips in rows of three, so six lengths sit as 3 + 3 rather than
+     4 + 2 with an orphaned pair. */
+  .adjust { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; gap: 4px 22px; margin-bottom: 18px; max-width: 320px; }
   .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 8px; min-height: 44px; transition: color 0.4s; border-bottom: 1px solid transparent; }
   .adjust button:hover { color: var(--ink-dim); }
   .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
@@ -139,7 +145,7 @@
   .phase-guide span { display: block; }
 
   .orb-wrap { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-bottom: 44px; }
-  .skip-hint { margin-top: 18px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; letter-spacing: 0.08em; opacity: 0.7; }
+  .skip-hint { margin-top: 18px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; letter-spacing: 0.08em; }
   .orb {
     position: absolute; width: 200px; height: 200px; border-radius: 50%;
     background: radial-gradient(circle at 50% 45%, rgba(217,139,74,0.22), rgba(217,139,74,0.04) 60%, transparent 72%);
@@ -186,8 +192,8 @@
 
   /* The controls stay out of sight while sitting; a double-tap summons them
      (.show) and they slip away again if left untouched. */
-  .controls { display: flex; gap: 44px; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
-  .controls.show { opacity: 1; pointer-events: auto; }
+  .controls { display: flex; gap: 44px; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.6s ease, visibility 0s linear 0.6s; }
+  .controls.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.6s ease, visibility 0s; }
   .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; min-height: 44px; transition: color 0.4s; }
   .controls button:hover { color: var(--ink-dim); }
 
@@ -225,10 +231,11 @@
 
   /* ---- Log ---- */
   .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
+  .log-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; width: 100%; max-width: 280px; margin-bottom: 8px; color: var(--ink-faint); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; }
   .log-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 30px; width: 100%; max-width: 280px; }
-  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.06); transition: background 0.4s; }
+  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.14); transition: background 0.4s; }
   .log-cell.lit { background: var(--ember-soft); box-shadow: 0 0 10px var(--glow); }
-  .log-cell.today { outline: 1px solid var(--ink-faint); }
+  .log-cell.today { outline: 1px solid var(--ink-dim); outline-offset: 1px; }
   .log-stats { color: var(--ink-dim); font-size: 0.95rem; text-align: center; line-height: 1.9; font-style: italic; margin-bottom: 32px; }
   .log-stats b { color: var(--ink); font-style: normal; }
 
@@ -265,19 +272,18 @@
 </style>
 </head>
 <body>
-<div class="atmosphere"></div>
-<div class="grain"></div>
+<div class="atmosphere" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
 
-<div class="stage">
+<main class="stage">
 
   <!-- HOME -->
   <section class="screen active" id="home">
-    <div class="title">Just Sitting</div>
-    <div class="kanji">只管打坐</div>
+    <h1 class="title">Just Sitting</h1>
+    <div class="kanji" lang="ja">只管打坐</div>
     <div class="stat-line" id="statLine"></div>
     <div class="stage-name" id="stageName"></div>
     <div class="stage-desc" id="stageDesc"></div>
-    <div class="plan" id="planRow"></div>
     <button class="begin" id="beginBtn">Begin</button>
     <div class="adjust" id="adjustRow"></div>
     <div class="ghost-row">
@@ -289,32 +295,19 @@
 
   <!-- SETTINGS -->
   <section class="screen" id="settings">
-    <div class="log-title">Settings</div>
+    <h1 class="log-title" style="margin-bottom:4px;">Settings</h1>
+    <button class="ghost-link" id="settingsReturnTop" style="margin-bottom:12px;">return</button>
     <div class="setting-block">
-      <button class="toggle-row" id="testToggle"><span class="tog-label">Testing mode</span><span class="tog-state" id="testState">off</span></button>
-      <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">Timer display</h2>
+      <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond. Incense needs a sit of five minutes or more; shorter sits show the ring.</div>
+      <div class="adjust" id="displayRow" role="group" aria-label="timer display" style="margin-bottom:0;"></div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Mark a past sitting</div>
-      <div class="setting-note" style="margin-bottom:14px;">For a sit lost to a reset, or done away from the app. <span id="pastSitState"></span></div>
-      <input type="date" id="pastDate" class="date-field" aria-label="date of the sitting">
-      <div class="adjust" id="pastLenRow" style="margin-bottom:0;"></div>
-      <div class="vow-actions" style="margin-top:0;">
-        <button class="ghost-link" id="addPastSit">add to the record</button>
-        <button class="ghost-link disp-hidden" id="pastUndo">undo</button>
-      </div>
-    </div>
-    <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Timer display</div>
-      <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond.</div>
-      <div class="adjust" id="displayRow" style="margin-bottom:0;"></div>
-    </div>
-    <div class="setting-block">
-      <button class="toggle-row" id="kyosakuToggle"><span class="tog-label">The kyōsaku</span><span class="tog-state" id="kyosakuState">off</span></button>
+      <button class="toggle-row" id="kyosakuToggle" role="switch" aria-checked="false"><span class="tog-label">The kyōsaku</span><span class="tog-state" id="kyosakuState">off</span></button>
       <div class="setting-note">When on, a single touch during the sit asks for the stick: a bow, then a sharp strike to bring you back. When off, a touch simply shows pause and end.</div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">The vows</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">The vows</h2>
       <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it. Changes are kept as you type.</div>
       <div id="vowEditor"></div>
       <div class="vow-actions">
@@ -323,31 +316,46 @@
       </div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Backup</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">Mark a past sitting</h2>
+      <div class="setting-note" style="margin-bottom:14px;">For a sit lost to a reset, or done away from the app. <span id="pastSitState" aria-live="polite"></span></div>
+      <input type="date" id="pastDate" class="date-field" aria-label="date of the sitting">
+      <div class="adjust" id="pastLenRow" role="group" aria-label="length of the sitting" style="margin-bottom:0;"></div>
+      <div class="vow-actions" style="margin-top:0;">
+        <button class="ghost-link" id="addPastSit">add to the record</button>
+        <button class="ghost-link disp-hidden" id="pastUndo">undo</button>
+      </div>
+    </div>
+    <div class="setting-block">
+      <h2 class="tog-label" style="margin-bottom:10px;">Backup</h2>
       <div class="setting-note" style="margin-bottom:14px;">Your record and vows live on this device. Copy a backup, or paste one to restore — useful before clearing Safari data or moving to a new phone.</div>
       <div class="vow-actions" style="margin-bottom:12px;">
         <button class="ghost-link" id="exportBtn">copy backup</button>
         <button class="ghost-link" id="importBtn">restore from backup</button>
       </div>
-      <textarea id="backupBox" rows="3" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
+      <textarea id="backupBox" rows="3" aria-label="backup code" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
+    </div>
+    <div class="setting-block">
+      <button class="toggle-row" id="testToggle" role="switch" aria-checked="false"><span class="tog-label">Testing mode</span><span class="tog-state" id="testState">off</span></button>
+      <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
     </div>
     <button class="ghost-link" id="settingsReturn">return</button>
-    <div id="versionMark" style="color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;"></div>
+    <div id="versionMark" style="color: var(--ink-faint); font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;"></div>
   </section>
 
   <!-- PRACTICE -->
   <section class="screen" id="practice">
-    <div class="phase-label" id="phaseLabel"></div>
-    <div class="phase-guide" id="phaseGuide"></div>
-    <div class="orb-wrap" id="orbWrap">
+    <h1 class="sr-only">Sitting</h1>
+    <div class="phase-label" id="phaseLabel" aria-live="polite"></div>
+    <div class="phase-guide" id="phaseGuide" aria-live="polite"></div>
+    <div class="orb-wrap" id="orbWrap" role="timer" aria-label="sitting">
       <div class="orb"></div>
       <!-- Ring display -->
-      <svg class="ring" id="ringDisplay" viewBox="0 0 200 200">
+      <svg class="ring" id="ringDisplay" viewBox="0 0 200 200" aria-hidden="true">
         <circle class="track" cx="100" cy="100" r="94"></circle>
         <circle class="prog" id="progRing" cx="100" cy="100" r="94"></circle>
       </svg>
       <!-- Hourglass display -->
-      <svg class="hourglass" id="hourglassDisplay" viewBox="0 0 120 190">
+      <svg class="hourglass" id="hourglassDisplay" viewBox="0 0 120 190" aria-hidden="true">
         <defs>
           <!-- Curved bulbs: sides bow outward, narrowing to the neck at y=95 -->
           <clipPath id="topBulb">
@@ -381,7 +389,7 @@
         <line class="post" x1="90" y1="23.5" x2="90" y2="166.5"></line>
       </svg>
       <!-- Incense display -->
-      <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200">
+      <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200" aria-hidden="true">
         <!-- holder base -->
         <ellipse cx="60" cy="184" rx="26" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
         <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
@@ -417,7 +425,8 @@
 
   <!-- CLOSING -->
   <section class="screen" id="closing">
-    <div class="close-ember" id="closeEmber"></div>
+    <h1 class="sr-only">Closing</h1>
+    <div class="close-ember" id="closeEmber" aria-hidden="true"></div>
     <div class="glyph-stage" id="glyphStage">
       <div class="glyph-wrap" id="glyphWrap">
         <svg id="closeGlyph" viewBox="0 0 100 100" aria-hidden="true">
@@ -438,19 +447,20 @@
       <div class="glyph-caption" id="glyphCaption"></div>
     </div>
     <div class="vow-final" id="vowFinal"></div>
-    <div class="sit-summary" id="sitSummary"></div>
+    <div class="sit-summary" id="sitSummary" aria-live="polite"></div>
     <button class="ghost-link" id="closeReturn">return</button>
   </section>
 
   <!-- LOG -->
   <section class="screen" id="log">
-    <div class="log-title">The Record</div>
-    <div class="log-grid" id="logGrid"></div>
+    <h1 class="log-title">The Record</h1>
+    <div class="log-week" id="logWeek" aria-hidden="true"></div>
+    <div class="log-grid" id="logGrid" role="list" aria-label="the last 28 days"></div>
     <div class="log-stats" id="logStats"></div>
     <button class="ghost-link" id="logReturn">return</button>
   </section>
 
-</div>
+</main>
 
 <script>
 (function(){
@@ -458,7 +468,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '39';
+  const APP_VERSION = '40';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -1273,9 +1283,9 @@
     const m = fixedMinutes;
     const method = m <= 5 ? 'count' : (m <= 10 ? 'follow' : 'open');
     const methodDesc = {
-      count:  `${m} ${m===1?'minute':'minutes'}. Count each exhalation, one through ten, and return whenever you drift.`,
-      follow: `${m} minutes. Let counting fall away; simply follow the breath as it moves.`,
-      open:   `${m} minutes. Just sitting. No object, no technique.`,
+      count:  `Count each exhalation, one through ten, and return whenever you drift.`,
+      follow: `Let counting fall away; simply follow the breath as it moves.`,
+      open:   `Just sitting. No object, no technique.`,
     };
     return {
       min: 0, fixed: true, name: `${m} ${m===1?'Minute':'Minutes'}`,
@@ -1392,8 +1402,8 @@
   });
 
   // ---------- Home rendering ----------
-  function fmtMin(sec){ return Math.round(sec/60); }
   function planFromStage(stage){ return stage.structure.map(p=>({...p})); }
+  function plural(n, one, many){ return n === 1 ? one : (many || one + 's'); }
 
   function renderHome() {
     const stage = currentStage();
@@ -1414,7 +1424,7 @@
       if (diff === 0) gapNote = "You have already sat today.";
       else if (diff === 1) gapNote = "Yesterday you sat.";
       else gapNote = `${diff} days since the last sitting.`;
-      el('statLine').innerHTML = `<b>${n}</b> sittings across <b>${days}</b> days.<br>${gapNote}`;
+      el('statLine').innerHTML = `<b>${n}</b> ${plural(n,'sitting')} across <b>${days}</b> ${plural(days,'day')}.<br>${gapNote}`;
     }
 
     // stage
@@ -1429,28 +1439,7 @@
       el('stageDesc').appendChild(note);
     }
 
-    // plan row (reflect active structure)
-    const struct = userStructure || planFromStage(stage);
-    renderPlan(struct);
     renderAdjust(stage);
-  }
-
-  function renderPlan(struct){
-    const row = el('planRow');
-    row.innerHTML = '';
-    const total = struct.reduce((a,p)=>a+p.sec,0);
-    struct.forEach((p,i)=>{
-      const seg = document.createElement('span');
-      seg.className = 'seg';
-      const label = p.type === 'settle' ? 'settle' : p.type === 'kinhin' ? 'walk' : 'sit';
-      seg.textContent = `${label} ${fmtMin(p.sec)}m`;
-      row.appendChild(seg);
-      if (i < struct.length-1){ const d=document.createElement('span'); d.className='dot'; d.textContent='·'; row.appendChild(d); }
-    });
-    const tot = document.createElement('span');
-    tot.className='seg'; tot.style.marginLeft='10px'; tot.style.color='var(--ember)';
-    tot.textContent = `(${fmtMin(total)}m)`;
-    row.appendChild(tot);
   }
 
   function renderAdjust(stage){
@@ -1463,6 +1452,7 @@
     FIXED_CHOICES.forEach(m=>{
       const b = document.createElement('button');
       b.textContent = `${m} min`;
+      b.setAttribute('aria-pressed', String(fixedMinutes === m));
       if (fixedMinutes === m) b.classList.add('on');
       b.onclick = ()=>{
         fixedMinutes = m;
@@ -1916,6 +1906,12 @@
   function drawProgress(instant){
     const phase = plan[phaseIdx];
     const frac = phase.sec ? (phase.sec - phaseRemain)/phase.sec : 0; // 0→1 elapsed
+    // Screen readers get the time as words; the display itself is decorative.
+    {
+      const mm = Math.floor(phaseRemain / 60), ss = phaseRemain % 60;
+      const left = mm ? `${mm} ${plural(mm,'minute')}${ss ? ` ${ss} ${plural(ss,'second')}` : ''}` : `${ss} ${plural(ss,'second')}`;
+      el('orbWrap').setAttribute('aria-label', `${PHASE_META[phase.type].label}, ${left} remaining${paused ? ', paused' : ''}`);
+    }
     const animated = [el('progRing'), el('sandTop'), el('sandBot'), el('incStick'), el('incEmber')];
     if (instant) {
       // Suppress transitions for this draw so a phase reset snaps to its start
@@ -2113,25 +2109,45 @@
     const arr = load();
     const grid = el('logGrid');
     grid.innerHTML = '';
-    // last 28 days
+    // last 28 days, today in the bottom-right corner; the weekday row above
+    // is aligned to whatever day the first column falls on.
     const today = parseDay(dayStr(new Date()));
+    const minutesByDay = {};
+    arr.forEach(s => { minutesByDay[s.d] = (minutesByDay[s.d] || 0) + (s.m || 0); });
     const sat = new Set(arr.map(s=>s.d));
+    const WEEKDAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const first = new Date(today); first.setDate(first.getDate() - 27);
+    const week = el('logWeek');
+    week.innerHTML = '';
+    for (let c = 0; c < 7; c++){
+      const w = document.createElement('div');
+      w.textContent = WEEKDAY[(first.getDay() + c) % 7][0];
+      week.appendChild(w);
+    }
     for (let i=27;i>=0;i--){
       const d = new Date(today); d.setDate(d.getDate()-i);
       const ds = dayStr(d);
       const c = document.createElement('div');
       c.className = 'log-cell' + (sat.has(ds)?' lit':'') + (i===0?' today':'');
+      const when = `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()]}`;
+      const what = sat.has(ds) ? `${minutesByDay[ds]} ${plural(minutesByDay[ds],'minute')}` : 'no sitting';
+      c.setAttribute('role', 'listitem');
+      c.setAttribute('aria-label', `${when}${i===0?' (today)':''}: ${what}`);
+      c.title = `${when} · ${what}`;
       grid.appendChild(c);
     }
     const n = arr.length;
-    const days = new Set(arr.map(s=>s.d)).size;
+    const days = sat.size;
     const totalMin = arr.reduce((a,s)=>a+(s.m||0),0);
-    // current streak
+    // current streak: today if already sat, otherwise counted back from
+    // yesterday, since today is still open.
     let streak = 0; let cur = new Date(today);
+    if (!sat.has(dayStr(cur))) cur.setDate(cur.getDate()-1);
     while (sat.has(dayStr(cur))){ streak++; cur.setDate(cur.getDate()-1); }
     el('logStats').innerHTML =
-      `<b>${n}</b> sittings · <b>${days}</b> days · <b>${totalMin}</b> minutes<br>` +
-      (streak>0?`current thread: <b>${streak}</b> ${streak===1?'day':'days'}`:`the cushion waits`);
+      `<b>${n}</b> ${plural(n,'sitting')} · <b>${days}</b> ${plural(days,'day')} · <b>${totalMin}</b> ${plural(totalMin,'minute')}<br>` +
+      (streak>0?`current streak: <b>${streak}</b> ${plural(streak,'day')}`:`the cushion waits`);
   }
 
   // ---------- Wiring ----------
@@ -2251,6 +2267,7 @@
   el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
   el('settingsReturn').onclick = ()=>{ flushVowSave(); goHome(); };
+  el('settingsReturnTop').onclick = el('settingsReturn').onclick;
   el('testToggle').onclick = ()=>{
     testingMode = !testingMode;
     renderSettings();
@@ -2406,6 +2423,7 @@
     opts.forEach(o=>{
       const b = document.createElement('button');
       b.textContent = o.label;
+      b.setAttribute('aria-pressed', String(displayMode === o.k));
       if (displayMode === o.k) b.classList.add('on');
       b.onclick = ()=>{
         displayMode = o.k;
@@ -2419,9 +2437,11 @@
   function renderSettings(){
     const tog = el('testToggle');
     tog.classList.toggle('on', testingMode);
+    tog.setAttribute('aria-checked', String(testingMode));
     el('testState').textContent = testingMode ? 'on' : 'off';
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
     el('kyosakuToggle').classList.toggle('on', kyosakuOn);
+    el('kyosakuToggle').setAttribute('aria-checked', String(kyosakuOn));
     el('kyosakuState').textContent = kyosakuOn ? 'on' : 'off';
     el('pastSitState').textContent = totalSits() + ' recorded.';
     const pd = el('pastDate');
@@ -2452,7 +2472,7 @@
 
   // init: paint immediately with empty caches, then re-render once the
   // persistent store has loaded.
-  try { el('versionMark').textContent = 'v' + APP_VERSION + ' · standalone'; } catch(e){}
+  try { el('versionMark').textContent = 'version ' + APP_VERSION; } catch(e){}
   try { history.replaceState({ screen: 'home' }, ''); } catch(e){}
   renderHome();
   initStorage();
