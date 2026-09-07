@@ -5,7 +5,10 @@
 const VERSION = new URL(location).searchParams.get('v') || '0';
 const CACHE = 'zazen-v' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg',
-  './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
+  './apple-touch-icon.png', './icon-192.png', './icon-512.png',
+  // The two typefaces, so the page looks the same offline.
+  './fonts/cormorant-garamond.woff2', './fonts/cormorant-garamond-italic.woff2',
+  './fonts/eb-garamond-400.woff2', './fonts/eb-garamond-400italic.woff2'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();

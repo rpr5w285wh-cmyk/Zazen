@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>只管打坐 · Just Sitting</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,8 +11,15 @@
 <!-- Home-screen icon: a candlelit ensō on dark ground. iOS needs a real,
      fetchable PNG here — it ignores data URIs and SVG touch icons. -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital@0;1&display=swap');
+  /* The two faces are served from ./fonts (Latin subsets, from Google Fonts)
+     and cached by the service worker, so the page paints at once and looks
+     the same offline. `swap` shows the fallback serif until they arrive. */
+  @font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 300 700; font-display: swap; src: url('fonts/cormorant-garamond.woff2') format('woff2'); }
+  @font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url('fonts/cormorant-garamond-italic.woff2') format('woff2'); }
+  @font-face { font-family: 'EB Garamond'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/eb-garamond-400.woff2') format('woff2'); }
+  @font-face { font-family: 'EB Garamond'; font-style: italic; font-weight: 400; font-display: swap; src: url('fonts/eb-garamond-400italic.woff2') format('woff2'); }
 
   :root {
     --bg: #20190f;
@@ -59,7 +66,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px max(28px, env(safe-area-inset-right)) 28px max(28px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; }
 
   /* ---- Screens ---- */
   .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
@@ -239,8 +246,21 @@
     .orb-wrap { margin-bottom: 0; }
     .skip-hint { margin-top: 6px; }
     /* pause/end float over the scene instead of pushing it taller */
-    .controls { position: fixed; bottom: 10px; left: 0; right: 0; justify-content: center; }
+    .controls { position: fixed; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; justify-content: center; }
     .glyph-stage { margin-top: 0; }
+  }
+
+  /* ---- Reduced motion ---- */
+  /* Stillness is the point anyway. Every animation collapses to its final
+     frame and every transition to a cut; the closing skips the morphing
+     glyph and goes straight to the vows (see renderVows). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 </style>
 </head>
@@ -438,7 +458,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '38';
+  const APP_VERSION = '39';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -855,6 +875,11 @@
     el('closeEmber').classList.add('show');   // one ember through the pause
     el('closeReturn').classList.remove('soft');
     closeGlyphTimer = setTimeout(()=>{
+      if (prefersReducedMotion()){               // no morph: straight to the vows
+        el('glyphStage').classList.add('gone');
+        resolveToVows(true);
+        return;
+      }
       closingPhase = 'glyph';
       el('closeEmber').classList.remove('show');
       wrap.classList.add('glyph-begin');        // flame fades in
@@ -870,6 +895,9 @@
   // ---------- Closing state ----------
   // 'pause' (dark, the ember), 'glyph' (the morphing pass), 'vows' (at rest).
   const CLOSING_SKIP_MS = 3000;   // taps this soon after End are the End tap
+  function prefersReducedMotion(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
+  }
   let closingPhase = 'idle';
   let closingStartedAt = 0;
   let closeReturnTimer = null;
