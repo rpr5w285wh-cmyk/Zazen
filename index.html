@@ -298,6 +298,11 @@
       <div class="adjust" id="displayRow" role="group" aria-label="timer display" style="margin-bottom:0;"></div>
     </div>
     <div class="setting-block">
+      <h2 class="tog-label" style="margin-bottom:10px;">The bell</h2>
+      <div class="setting-note" style="margin-bottom:4px;">Sound it once to check the volume before you sit. On phones that can, the bell is also felt as a short vibration, so a silenced phone still marks the end.</div>
+      <button class="ghost-link" id="bellTest">sound the bell</button>
+    </div>
+    <div class="setting-block">
       <button class="toggle-row" id="kyosakuToggle" role="switch" aria-checked="false"><span class="tog-label">The kyōsaku</span><span class="tog-state" id="kyosakuState">off</span></button>
       <div class="setting-note">When on, a single touch during the sit asks for the stick: a bow, then a sharp strike to bring you back. When off, a touch simply shows pause and end.</div>
     </div>
@@ -462,7 +467,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '41';
+  const APP_VERSION = '42';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -666,6 +671,12 @@
         t += 1.1;                            // pause between rounds
       }
     } catch(e){}
+  }
+
+  // A felt counterpart to the bell, for phones that vibrate: a silenced phone
+  // still marks the opening and the close. Silently does nothing elsewhere.
+  function buzz(pattern){
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e){}
   }
 
   // Closing roll-down: three keisu strikes, each a touch later and softer,
@@ -1401,6 +1412,7 @@
     // shijosho, two strikes of the keisu, begins the sitting itself.
     if (phase.type === 'zazen') {
       keisu(2, 2.6);
+      buzz([80, 140, 80]);               // two pulses, like the two strikes
       showControls(CONTROLS_INTRO_MS);   // a last glimpse of pause and end
     }
     applyDisplayVisibility();
@@ -1807,6 +1819,7 @@
   function finish(){
     clearInterval(timer); timer = null; stopSettleCues();
     keisuRollDown();
+    buzz([120, 160, 120, 160, 120]);   // three pulses, like the three strikes
     const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
     record(sitMinutes);
     el('sitSummary').innerHTML = finishSummary(sitMinutes);
@@ -1825,6 +1838,7 @@
   function endEarly(){
     clearInterval(timer); timer = null; stopSettleCues();
     keisu(2, 2.8);
+    buzz([120, 160, 120]);
     // Zazen minutes actually elapsed: completed zazen phases plus the current
     // partial one if we're mid-sit. Computed from wall clock, so sleep is fine.
     const zMin = elapsedZazenMinutes();
@@ -2097,6 +2111,7 @@
     renderSettings();
     // reflect on home immediately next time it's shown
   };
+  el('bellTest').onclick = ()=>{ keisu(1); buzz([60]); };
   el('kyosakuToggle').onclick = ()=>{
     kyosakuOn = !kyosakuOn;
     sSet(KYOSAKU_KEY, kyosakuOn ? '1' : '0');

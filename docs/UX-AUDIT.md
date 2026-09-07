@@ -23,9 +23,10 @@ Fixes landed on this branch after the audit, by finding number:
 | Self-host the fonts, allow zoom, honour reduced motion | 20, 21, 22, 24, 25 |
 | Tidy the copy and layout, and give screen readers a structure | 8, 9, 10, 12, 14, 15, 17, 18, 23, 26, 27 |
 | Remove the dead progression and rewrite the README | 28 |
+| Let the bell be checked, and felt | 6 |
 
-Still open: 6 (a bell test and a haptic fallback), and 19 is moot now that
-past sittings carry real minutes.
+Nothing remains open. Finding 19 is moot now that past sittings carry real
+minutes.
 
 ## What works well
 
