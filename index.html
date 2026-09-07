@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>只管打坐 · Just Sitting</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,8 +11,15 @@
 <!-- Home-screen icon: a candlelit ensō on dark ground. iOS needs a real,
      fetchable PNG here — it ignores data URIs and SVG touch icons. -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=EB+Garamond:ital@0;1&display=swap');
+  /* The two faces are served from ./fonts (Latin subsets, from Google Fonts)
+     and cached by the service worker, so the page paints at once and looks
+     the same offline. `swap` shows the fallback serif until they arrive. */
+  @font-face { font-family: 'Cormorant Garamond'; font-style: normal; font-weight: 300 700; font-display: swap; src: url('fonts/cormorant-garamond.woff2') format('woff2'); }
+  @font-face { font-family: 'Cormorant Garamond'; font-style: italic; font-weight: 300 700; font-display: swap; src: url('fonts/cormorant-garamond-italic.woff2') format('woff2'); }
+  @font-face { font-family: 'EB Garamond'; font-style: normal; font-weight: 400; font-display: swap; src: url('fonts/eb-garamond-400.woff2') format('woff2'); }
+  @font-face { font-family: 'EB Garamond'; font-style: italic; font-weight: 400; font-display: swap; src: url('fonts/eb-garamond-400italic.woff2') format('woff2'); }
 
   :root {
     --bg: #20190f;
@@ -27,6 +34,10 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Headings carry structure for screen readers; their look comes from the
+     classes below, not from being headings. */
+  h1, h2 { font-size: inherit; font-weight: inherit; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
   html, body { height: 100%; overflow: hidden; }
 
@@ -59,13 +70,15 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px max(28px, env(safe-area-inset-right)) 28px max(28px, env(safe-area-inset-left)); display: flex; flex-direction: column; align-items: center; }
 
   /* ---- Screens ---- */
   .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
   .screen.active { display: flex; }
   /* Settings can exceed the viewport (vow editor); let it scroll internally. */
   #settings.active { max-height: calc(100dvh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+  /* Home can outgrow a small phone (320×568); scroll rather than clip the title. */
+  #home.active { max-height: calc(100dvh - 56px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
   #closing.active { max-height: calc(100dvh - 90px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 0 24px; justify-content: center; min-height: calc(100dvh - 90px); }
   #closing.active.glyph-overflow { overflow: visible; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
@@ -79,10 +92,6 @@
 
   .stage-name { color: var(--ember); font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 6px; }
   .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 36px; max-width: 320px; }
-
-  .plan { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 34px; color: var(--ink-faint); font-size: 0.82rem; letter-spacing: 0.08em; }
-  .plan .seg { color: var(--ink-dim); }
-  .plan .dot { color: var(--ink-faint); margin: 0 2px; }
 
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
@@ -100,12 +109,14 @@
   }
   .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
 
-  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 320px; }
-  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
+  /* Option chips in rows of three, so six lengths sit as 3 + 3 rather than
+     4 + 2 with an orphaned pair. */
+  .adjust { display: grid; grid-template-columns: repeat(3, auto); justify-content: center; gap: 4px 22px; margin-bottom: 18px; max-width: 320px; }
+  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 8px; min-height: 44px; transition: color 0.4s; border-bottom: 1px solid transparent; }
   .adjust button:hover { color: var(--ink-dim); }
   .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
 
-  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
+  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; min-height: 44px; display: inline-flex; align-items: center; transition: color 0.4s; font-style: italic; }
   .ghost-link:hover { color: var(--ink-dim); }
   .ghost-row { display: flex; gap: 24px; align-items: center; }
   .test-banner { margin-top: 16px; color: var(--ember); font-size: 0.78rem; letter-spacing: 0.06em; font-style: italic; opacity: 0.9; text-align: center; max-width: 300px; }
@@ -118,7 +129,11 @@
   #vowEditor textarea { width: 100%; background: rgba(205,189,157,0.05); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font-family: 'EB Garamond', serif; font-size: 0.95rem; font-style: italic; padding: 9px 11px; margin-bottom: 14px; resize: none; line-height: 1.4; }
   .vow-field-label { color: var(--ink-faint); font-size: 0.78rem; font-style: italic; letter-spacing: 0.03em; margin-bottom: 5px; line-height: 1.4; }
   #vowEditor textarea:focus { outline: none; border-color: var(--ember-soft); }
-  .vow-actions { display: flex; gap: 18px; margin-top: 6px; }
+  .vow-actions { display: flex; gap: 18px; margin-top: 6px; flex-wrap: wrap; }
+  /* A two-step action: the first tap arms it, the second within a few seconds acts. */
+  .ghost-link.armed { color: var(--ember); border-bottom: 1px solid var(--ember-soft); }
+  .date-field { width: 100%; max-width: 220px; background: rgba(205,189,157,0.05); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); font-family: inherit; font-size: 0.95rem; padding: 9px 11px; min-height: 44px; color-scheme: dark; margin-bottom: 4px; }
+  .date-field:focus { outline: none; border-color: var(--ember-soft); }
 
   /* ---- Practice ---- */
   .phase-label { color: var(--ember); font-size: 0.8rem; letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 8px; height: 1.2em; transition: opacity 0.8s; }
@@ -126,7 +141,7 @@
   .phase-guide span { display: block; }
 
   .orb-wrap { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-bottom: 44px; }
-  .skip-hint { margin-top: 18px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; letter-spacing: 0.08em; opacity: 0.7; }
+  .skip-hint { margin-top: 18px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; letter-spacing: 0.08em; }
   .orb {
     position: absolute; width: 200px; height: 200px; border-radius: 50%;
     background: radial-gradient(circle at 50% 45%, rgba(217,139,74,0.22), rgba(217,139,74,0.04) 60%, transparent 72%);
@@ -168,14 +183,13 @@
   .ring, .hourglass, .incense { transition: opacity 1s ease; }
   .ceremony-dim { opacity: 0 !important; }
 
-  .controls button#cycleBtn { font-size: 1.1rem; letter-spacing: 0; padding: 12px 10px; }
 
 
   /* The controls stay out of sight while sitting; a double-tap summons them
      (.show) and they slip away again if left untouched. */
-  .controls { display: flex; gap: 28px; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.6s ease; }
-  .controls.show { opacity: 1; pointer-events: auto; }
-  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; transition: color 0.4s; }
+  .controls { display: flex; gap: 44px; align-items: center; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.6s ease, visibility 0s linear 0.6s; }
+  .controls.show { opacity: 1; visibility: visible; pointer-events: auto; transition: opacity 0.6s ease, visibility 0s; }
+  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; min-height: 44px; transition: color 0.4s; }
   .controls button:hover { color: var(--ink-dim); }
 
   /* ---- Closing ---- */
@@ -202,13 +216,21 @@
   .sit-summary.show { opacity: 1; }
   #closeReturn { opacity: 0; transition: opacity 1s ease; pointer-events: none; }
   #closeReturn.show { opacity: 1; pointer-events: auto; }
+  /* Offered quietly during the ceremony; full strength once the vows rest. */
+  #closeReturn.show.soft { opacity: 0.5; }
+  /* A single ember breathes through the quiet pause after the closing bell,
+     so the dark screen reads as stillness rather than a crash. */
+  .close-ember { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 18px 6px var(--glow); opacity: 0; transition: opacity 1.5s ease; pointer-events: none; z-index: 3; animation: emberBreathe 4s ease-in-out infinite; }
+  .close-ember.show { opacity: 0.85; }
+  @keyframes emberBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.3); } }
 
   /* ---- Log ---- */
   .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
+  .log-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; width: 100%; max-width: 280px; margin-bottom: 8px; color: var(--ink-faint); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; text-align: center; }
   .log-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 30px; width: 100%; max-width: 280px; }
-  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.06); transition: background 0.4s; }
+  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.14); transition: background 0.4s; }
   .log-cell.lit { background: var(--ember-soft); box-shadow: 0 0 10px var(--glow); }
-  .log-cell.today { outline: 1px solid var(--ink-faint); }
+  .log-cell.today { outline: 1px solid var(--ink-dim); outline-offset: 1px; }
   .log-stats { color: var(--ink-dim); font-size: 0.95rem; text-align: center; line-height: 1.9; font-style: italic; margin-bottom: 32px; }
   .log-stats b { color: var(--ink); font-style: normal; }
 
@@ -226,25 +248,37 @@
     .orb-wrap { margin-bottom: 0; }
     .skip-hint { margin-top: 6px; }
     /* pause/end float over the scene instead of pushing it taller */
-    .controls { position: fixed; bottom: 10px; left: 0; right: 0; justify-content: center; }
+    .controls { position: fixed; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); left: 0; right: 0; justify-content: center; }
     .glyph-stage { margin-top: 0; }
+  }
+
+  /* ---- Reduced motion ---- */
+  /* Stillness is the point anyway. Every animation collapses to its final
+     frame and every transition to a cut; the closing skips the morphing
+     glyph and goes straight to the vows (see renderVows). */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 </style>
 </head>
 <body>
-<div class="atmosphere"></div>
-<div class="grain"></div>
+<div class="atmosphere" aria-hidden="true"></div>
+<div class="grain" aria-hidden="true"></div>
 
-<div class="stage">
+<main class="stage">
 
   <!-- HOME -->
   <section class="screen active" id="home">
-    <div class="title">Just Sitting</div>
-    <div class="kanji">只管打坐</div>
+    <h1 class="title">Just Sitting</h1>
+    <div class="kanji" lang="ja">只管打坐</div>
     <div class="stat-line" id="statLine"></div>
     <div class="stage-name" id="stageName"></div>
     <div class="stage-desc" id="stageDesc"></div>
-    <div class="plan" id="planRow"></div>
     <button class="begin" id="beginBtn">Begin</button>
     <div class="adjust" id="adjustRow"></div>
     <div class="ghost-row">
@@ -256,55 +290,72 @@
 
   <!-- SETTINGS -->
   <section class="screen" id="settings">
-    <div class="log-title">Settings</div>
+    <h1 class="log-title" style="margin-bottom:4px;">Settings</h1>
+    <button class="ghost-link" id="settingsReturnTop" style="margin-bottom:12px;">return</button>
     <div class="setting-block">
-      <button class="toggle-row" id="testToggle"><span class="tog-label">Testing mode</span><span class="tog-state" id="testState">off</span></button>
-      <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">Timer display</h2>
+      <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond. Incense needs a sit of five minutes or more; shorter sits show the ring.</div>
+      <div class="adjust" id="displayRow" role="group" aria-label="timer display" style="margin-bottom:0;"></div>
     </div>
     <div class="setting-block">
-      <button class="toggle-row" id="addPastSit"><span class="tog-label">Mark a past sitting</span><span class="tog-state" id="pastSitState"></span></button>
-      <div class="setting-note">Adds one sitting to the record, for sits lost to a reset or done away from the app.</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">The bell</h2>
+      <div class="setting-note" style="margin-bottom:4px;">Sound it once to check the volume before you sit. On phones that can, the bell is also felt as a short vibration, so a silenced phone still marks the end.</div>
+      <button class="ghost-link" id="bellTest">sound the bell</button>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Timer display</div>
-      <div class="setting-note" style="margin-bottom:14px;">Auto follows the length of the sit: the ring for one minute, the hourglass for three, the incense for five and beyond.</div>
-      <div class="adjust" id="displayRow" style="margin-bottom:0;"></div>
+      <button class="toggle-row" id="kyosakuToggle" role="switch" aria-checked="false"><span class="tog-label">The kyōsaku</span><span class="tog-state" id="kyosakuState">off</span></button>
+      <div class="setting-note">When on, a single touch during the sit asks for the stick: a bow, then a sharp strike to bring you back. When off, a touch simply shows pause and end.</div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">The vows</div>
-      <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it.</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">The vows</h2>
+      <div class="setting-note" style="margin-bottom:14px;">Spoken at the close of each sitting. Leave a line empty to omit it. Changes are kept as you type.</div>
       <div id="vowEditor"></div>
       <div class="vow-actions">
-        <button class="ghost-link" id="vowSave">save</button>
+        <span class="setting-note" id="vowSaved" style="margin:0;min-width:3.5em;align-self:center;" aria-live="polite"></span>
         <button class="ghost-link" id="vowReset">restore traditional vows</button>
       </div>
     </div>
     <div class="setting-block">
-      <div class="tog-label" style="margin-bottom:10px;">Backup</div>
+      <h2 class="tog-label" style="margin-bottom:10px;">Mark a past sitting</h2>
+      <div class="setting-note" style="margin-bottom:14px;">For a sit lost to a reset, or done away from the app. <span id="pastSitState" aria-live="polite"></span></div>
+      <input type="date" id="pastDate" class="date-field" aria-label="date of the sitting">
+      <div class="adjust" id="pastLenRow" role="group" aria-label="length of the sitting" style="margin-bottom:0;"></div>
+      <div class="vow-actions" style="margin-top:0;">
+        <button class="ghost-link" id="addPastSit">add to the record</button>
+        <button class="ghost-link disp-hidden" id="pastUndo">undo</button>
+      </div>
+    </div>
+    <div class="setting-block">
+      <h2 class="tog-label" style="margin-bottom:10px;">Backup</h2>
       <div class="setting-note" style="margin-bottom:14px;">Your record and vows live on this device. Copy a backup, or paste one to restore — useful before clearing Safari data or moving to a new phone.</div>
       <div class="vow-actions" style="margin-bottom:12px;">
         <button class="ghost-link" id="exportBtn">copy backup</button>
         <button class="ghost-link" id="importBtn">restore from backup</button>
       </div>
-      <textarea id="backupBox" rows="3" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
+      <textarea id="backupBox" rows="3" aria-label="backup code" placeholder="backup code appears here, or paste one to restore" style="width:100%;background:rgba(205,189,157,0.05);border:1px solid var(--line);border-radius:3px;color:var(--ink);font-family:monospace;font-size:0.78rem;padding:9px 11px;resize:none;line-height:1.4;"></textarea>
+    </div>
+    <div class="setting-block">
+      <button class="toggle-row" id="testToggle" role="switch" aria-checked="false"><span class="tog-label">Testing mode</span><span class="tog-state" id="testState">off</span></button>
+      <div class="setting-note">When on, your sittings are not added to the record. For trying things out.</div>
     </div>
     <button class="ghost-link" id="settingsReturn">return</button>
-    <div id="versionMark" style="color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;"></div>
+    <div id="versionMark" style="color: var(--ink-faint); font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 8px;"></div>
   </section>
 
   <!-- PRACTICE -->
   <section class="screen" id="practice">
-    <div class="phase-label" id="phaseLabel"></div>
-    <div class="phase-guide" id="phaseGuide"></div>
-    <div class="orb-wrap" id="orbWrap">
+    <h1 class="sr-only">Sitting</h1>
+    <div class="phase-label" id="phaseLabel" aria-live="polite"></div>
+    <div class="phase-guide" id="phaseGuide" aria-live="polite"></div>
+    <div class="orb-wrap" id="orbWrap" role="timer" aria-label="sitting">
       <div class="orb"></div>
       <!-- Ring display -->
-      <svg class="ring" id="ringDisplay" viewBox="0 0 200 200">
+      <svg class="ring" id="ringDisplay" viewBox="0 0 200 200" aria-hidden="true">
         <circle class="track" cx="100" cy="100" r="94"></circle>
         <circle class="prog" id="progRing" cx="100" cy="100" r="94"></circle>
       </svg>
       <!-- Hourglass display -->
-      <svg class="hourglass" id="hourglassDisplay" viewBox="0 0 120 190">
+      <svg class="hourglass" id="hourglassDisplay" viewBox="0 0 120 190" aria-hidden="true">
         <defs>
           <!-- Curved bulbs: sides bow outward, narrowing to the neck at y=95 -->
           <clipPath id="topBulb">
@@ -338,7 +389,7 @@
         <line class="post" x1="90" y1="23.5" x2="90" y2="166.5"></line>
       </svg>
       <!-- Incense display -->
-      <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200">
+      <svg class="incense" id="incenseDisplay" viewBox="0 0 120 200" aria-hidden="true">
         <!-- holder base -->
         <ellipse cx="60" cy="184" rx="26" ry="5" fill="rgba(0,0,0,0.4)"></ellipse>
         <rect x="56" y="150" width="8" height="34" rx="2" fill="var(--ink-faint)" opacity="0.5"></rect>
@@ -365,7 +416,6 @@
       </svg>
     </div>
     <div class="controls" id="controlsRow">
-      <button id="cycleBtn" class="disp-hidden">⊙</button>
       <button id="pauseBtn">Pause</button>
       <button id="endBtn">End</button>
     </div>
@@ -374,6 +424,8 @@
 
   <!-- CLOSING -->
   <section class="screen" id="closing">
+    <h1 class="sr-only">Closing</h1>
+    <div class="close-ember" id="closeEmber" aria-hidden="true"></div>
     <div class="glyph-stage" id="glyphStage">
       <div class="glyph-wrap" id="glyphWrap">
         <svg id="closeGlyph" viewBox="0 0 100 100" aria-hidden="true">
@@ -394,19 +446,20 @@
       <div class="glyph-caption" id="glyphCaption"></div>
     </div>
     <div class="vow-final" id="vowFinal"></div>
-    <div class="sit-summary" id="sitSummary"></div>
+    <div class="sit-summary" id="sitSummary" aria-live="polite"></div>
     <button class="ghost-link" id="closeReturn">return</button>
   </section>
 
   <!-- LOG -->
   <section class="screen" id="log">
-    <div class="log-title">The Record</div>
-    <div class="log-grid" id="logGrid"></div>
+    <h1 class="log-title">The Record</h1>
+    <div class="log-week" id="logWeek" aria-hidden="true"></div>
+    <div class="log-grid" id="logGrid" role="list" aria-label="the last 28 days"></div>
     <div class="log-stats" id="logStats"></div>
     <button class="ghost-link" id="logReturn">return</button>
   </section>
 
-</div>
+</main>
 
 <script>
 (function(){
@@ -414,7 +467,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '36';
+  const APP_VERSION = '42';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -546,38 +599,8 @@
     } catch(e){}
   }
 
-  // ---- Inkin: small handbell on a handle. Bright, high, shorter shimmer. ----
-  function inkin(strikes = 1, gap = 1.4) {
-    try {
-      ensureAudio();
-      for (let s = 0; s < strikes; s++) {
-        const t = actx.currentTime + s * gap;
-        const f0 = 660; // much higher than the keisu
-        const out = actx.createGain(); out.gain.value = 0.5;
-        out.connect(actx.destination);
-        // Bright but inharmonic; shorter decays than the big bowl.
-        const partials = [
-          [1.00, 0.5, 3.2,  0],
-          [2.74, 0.34, 2.4,  6],
-          [4.05, 0.20, 1.6, -7],
-          [5.80, 0.10, 1.0,  9],
-        ];
-        partials.forEach(([ratio, level, decay, detune]) => {
-          const o = actx.createOscillator(); const g = actx.createGain();
-          o.type = 'sine'; o.frequency.value = f0 * ratio; o.detune.value = detune;
-          g.gain.setValueAtTime(0.0001, t);
-          g.gain.exponentialRampToValueAtTime(level, t + 0.006);
-          g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-          o.connect(g); g.connect(out);
-          o.start(t); o.stop(t + decay + 0.05);
-        });
-      }
-    } catch(e){}
-  }
-
-  // ---- Taku / clappers: two hardwood blocks struck. A sharp, dry crack. ----
   // The kyōsaku ("encouragement stick") strike: a single sharp, woody crack —
-  // harder and a touch lower than the taku clappers, so it reads as the stick.
+  // harder and a touch lower than the han, so it reads as the stick.
   function kyosaku(){
     try {
       ensureAudio();
@@ -604,37 +627,6 @@
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
       o.connect(g); g.connect(out);
       o.start(t); o.stop(t + 0.18);
-    } catch(e){}
-  }
-
-  function taku(strikes = 1, gap = 0.5) {
-    try {
-      ensureAudio();
-      for (let s = 0; s < strikes; s++) {
-        const t = actx.currentTime + s * gap;
-        const out = actx.createGain(); out.gain.value = 0.6;
-        out.connect(actx.destination);
-        // Very short filtered-noise burst + a brief woody resonance.
-        const len = 0.05;
-        const buf = actx.createBuffer(1, actx.sampleRate * len, actx.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
-        const noise = actx.createBufferSource(); noise.buffer = buf;
-        const bp = actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=2200; bp.Q.value=1.0;
-        const ng = actx.createGain();
-        ng.gain.setValueAtTime(0.7, t);
-        ng.gain.exponentialRampToValueAtTime(0.0001, t + len);
-        noise.connect(bp); bp.connect(ng); ng.connect(out);
-        noise.start(t); noise.stop(t + len);
-        // A short pitched "knock" for the wood body.
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='triangle'; o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.4, t + 0.003);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-        o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + 0.14);
-      }
     } catch(e){}
   }
 
@@ -681,8 +673,11 @@
     } catch(e){}
   }
 
-  // Back-compat shim: existing calls to bell() route to the keisu.
-  function bell(strikes = 1, gap = 2.4) { keisu(strikes, gap); }
+  // A felt counterpart to the bell, for phones that vibrate: a silenced phone
+  // still marks the opening and the close. Silently does nothing elsewhere.
+  function buzz(pattern){
+    try { if (navigator.vibrate) navigator.vibrate(pattern); } catch(e){}
+  }
 
   // Closing roll-down: three keisu strikes, each a touch later and softer,
   // the traditional way a sitting is released.
@@ -700,11 +695,10 @@
 
   // ---------- Storage (light: dates, durations, count) ----------
   const KEY = 'zazen.sessions.v1';
-  const FIXED_KEY = 'zazen.fixed.v1';   // fixed sitting length in minutes (0=off)
+  const FIXED_KEY = 'zazen.fixed.v1';   // the chosen sitting length in minutes
   const FIXED_CHOICES = [1, 3, 5, 10, 15, 20];  // the lengths offered on the home screen
   let testingMode = false;   // when true, sittings are NOT recorded
-  let fixedMinutes = 5;      // fixed length; 5 is the default sit (0 = the old
-                             // progression path, kept in code but no longer offered)
+  let fixedMinutes = 5;      // the chosen sitting length; five is the default
   // ---------- Persistence (standalone: localStorage is primary) ----------
   // In-memory caches keep the rest of the app synchronous; localStorage is the
   // durable store for a home-screen web app on a stable origin.
@@ -718,10 +712,13 @@
   }
   function load() { return sessionsCache; }
   function save(arr) { sessionsCache = arr; sSet(KEY, JSON.stringify(arr)); }
-  function record(minutes) {
+  // `at` dates the sitting by when it ended (a sit that finished while the
+  // app was closed belongs to that day, not to the day it was noticed).
+  function record(minutes, at) {
     if (testingMode) return;   // testing sits leave the real record untouched
     const arr = load().slice();
-    arr.push({ d: dayStr(new Date()), m: minutes, t: Date.now() });
+    const when = at || Date.now();
+    arr.push({ d: dayStr(new Date(when)), m: minutes, t: when });
     save(arr);
   }
   function totalSits() { return load().length; }
@@ -773,6 +770,7 @@
     }
     const dm = sGet(DISPLAY_KEY);
     if (['auto','ring','glass','incense','random'].includes(dm)) displayMode = dm;
+    kyosakuOn = sGet(KYOSAKU_KEY) === '1';
     renderHome();
   }
   // Four semi-abstract glyphs, one per vow slot (by position, not text, so they
@@ -820,18 +818,73 @@
     wrap.classList.remove('glyph-begin');     // reset the fade-in
     void wrap.offsetWidth;                     // reflow so re-adding re-triggers
     if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); }
+    if (closeReturnTimer){ clearTimeout(closeReturnTimer); }
     const pauseMs = testingMode ? 1500 : 9000;
+    closingPhase = 'pause';
+    closingStartedAt = Date.now();
+    el('closeEmber').classList.add('show');   // one ember through the pause
+    el('closeReturn').classList.remove('soft');
     closeGlyphTimer = setTimeout(()=>{
+      if (prefersReducedMotion()){               // no morph: straight to the vows
+        el('glyphStage').classList.add('gone');
+        resolveToVows(true);
+        return;
+      }
+      closingPhase = 'glyph';
+      el('closeEmber').classList.remove('show');
       wrap.classList.add('glyph-begin');        // flame fades in
       startCloseGlyph(vows);
     }, pauseMs);
+    // The way out is always within reach: a quiet return after a few seconds,
+    // and any touch skips ahead to the vows (see the closing tap handler).
+    closeReturnTimer = setTimeout(()=>{
+      if (closingPhase !== 'vows'){ el('closeReturn').classList.add('show', 'soft'); }
+    }, CLOSING_SKIP_MS);
+  }
+
+  // ---------- Closing state ----------
+  // 'pause' (dark, the ember), 'glyph' (the morphing pass), 'vows' (at rest).
+  const CLOSING_SKIP_MS = 3000;   // taps this soon after End are the End tap
+  function prefersReducedMotion(){
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; }
+  }
+  let closingPhase = 'idle';
+  let closingStartedAt = 0;
+  let closeReturnTimer = null;
+
+  // Phase B: fade the glyph + caption away, reveal the four vows, then the
+  // summary, then the return link — the calm resting state of the closing.
+  // `fast` is the skipped path: the same sequence at a brisker pace.
+  function resolveToVows(fast){
+    if (closingPhase === 'vows') return;
+    closingPhase = 'vows';
+    const stage = el('glyphStage'), final = el('vowFinal');
+    el('closeEmber').classList.remove('show');
+    stage.classList.add('fade-out');
+    el('closing').classList.remove('glyph-overflow');
+    setTimeout(()=>{
+      stage.classList.add('gone');           // collapse so vows truly center
+      final.classList.add('show');           // four vows rise in turn
+      setTimeout(()=> el('sitSummary').classList.add('show'), fast ? 1200 : 4000);
+      setTimeout(()=>{ el('closeReturn').classList.remove('soft'); el('closeReturn').classList.add('show'); }, fast ? 1800 : 5200);
+    }, fast ? 400 : 1500);
+  }
+
+  // A touch anywhere on the closing (after the first few seconds) goes
+  // straight to the vows: the ceremony is offered, never imposed.
+  function skipClosing(){
+    if (closingPhase !== 'pause' && closingPhase !== 'glyph') return;
+    if (Date.now() - closingStartedAt < CLOSING_SKIP_MS) return;
+    if (closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer = null; }
+    if (cgRAF){ cancelAnimationFrame(cgRAF); cgRAF = null; }
+    el('glyphWrap').classList.add('glyph-begin');   // ensure the stage can fade
+    resolveToVows(true);
   }
 
 
   // ---------- Closing glyph: one continuous morphing symbol ----------
   // bolt (pain) -> heart (coming back) -> door (the doorway) -> path (the way).
   // The first pass is paced to the four vows rising in; then it loops freely.
-  const VOW_STEP = 4.0;   // (retained) seconds between vow beats, for reference
   let cgRAF = null;
   let closeGlyphTimer = null;
 
@@ -1116,102 +1169,37 @@
     cancelAnimationFrame(cgRAF);
     path.setAttribute('d', ptsToPath(BOLT));
     cgRAF = requestAnimationFrame(loop);
-    // Testing mode: surface the return link early so you needn't wait out the
-    // whole pass on every test. The glyph still plays and resolves normally.
-    if (testingMode){
-      setTimeout(()=>{ if(cgRAF) el('closeReturn').classList.add('show'); }, 2500);
-    }
-
-    // Phase B: fade the glyph + caption away, reveal the four vows, then the
-    // summary, then the return link — the calm resting state the closing had
-    // before the glyph existed.
-    function resolveToVows(){
-      const stage = el('glyphStage'), final = el('vowFinal');
-      stage.classList.add('fade-out');
-      el('closing').classList.remove('glyph-overflow');
-      setTimeout(()=>{
-        stage.classList.add('gone');           // collapse so vows truly center
-        final.classList.add('show');           // four vows rise in turn
-        setTimeout(()=> el('sitSummary').classList.add('show'), 4000);
-        setTimeout(()=> el('closeReturn').classList.add('show'), 5200);
-      }, 1500);
-    }
   }
 
-  function stopCloseGlyph(){ if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; } if(closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer=null; } }
+  function stopCloseGlyph(){
+    if(cgRAF){ cancelAnimationFrame(cgRAF); cgRAF=null; }
+    if(closeGlyphTimer){ clearTimeout(closeGlyphTimer); closeGlyphTimer=null; }
+    if(closeReturnTimer){ clearTimeout(closeReturnTimer); closeReturnTimer=null; }
+    closingPhase = 'idle';
+    const ember = el('closeEmber'); if (ember) ember.classList.remove('show');
+  }
 
-  // ---------- Progression: depth unlocked by accumulated sits ----------
-  // Each stage defines the guidance + a default structure.
-  const STAGES = [
-    { min: 0,  name: "One Minute",
-      desc: "Begin small. One minute of sitting. Count each exhalation, one through ten.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:60}] },
-    { min: 3,  name: "Two Minutes",
-      desc: "Two minutes now. Stay with the counting.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:120}] },
-    { min: 6,  name: "Three Minutes",
-      desc: "Three minutes. The counting steadies you.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:180}] },
-    { min: 10, name: "Four Minutes",
-      desc: "Four minutes. Let the counting grow quiet and easy.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:240}] },
-    { min: 15, name: "Five Minutes",
-      desc: "Five minutes. A full sitting. Count, and return whenever you drift.",
-      method: "count",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:300}] },
-    { min: 22, name: "Following",
-      desc: "Let counting fall away. Simply follow the breath as it moves, without holding it.",
-      method: "follow",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:420}] },
-    { min: 32, name: "Two Periods",
-      desc: "Two sits now, bridged by slow walking. Let kinhin carry the stillness with you.",
-      method: "follow",
-      structure: [{type:'settle',sec:25},{type:'zazen',sec:420},{type:'kinhin',sec:180},{type:'zazen',sec:420}] },
-    { min: 50, name: "Shikantaza",
-      desc: "Just sitting. No object, no technique. Thoughts arise and pass; you neither chase nor push.",
-      method: "open",
-      structure: [{type:'settle',sec:30},{type:'zazen',sec:600},{type:'kinhin',sec:180},{type:'zazen',sec:600}] },
-  ];
-
-  // A stage built from a fixed chosen length, used when fixedMinutes > 0 so the
-  // app holds one length instead of advancing through the progression.
-  function fixedStage(){
+  // ---------- The sitting ----------
+  // One length, chosen on the home screen. The method follows the length:
+  // counting up to five minutes, following the breath at ten, shikantaza beyond.
+  function currentStage(){
     const m = fixedMinutes;
     const method = m <= 5 ? 'count' : (m <= 10 ? 'follow' : 'open');
     const methodDesc = {
-      count:  `${m} ${m===1?'minute':'minutes'}. Count each exhalation, one through ten, and return whenever you drift.`,
-      follow: `${m} minutes. Let counting fall away; simply follow the breath as it moves.`,
-      open:   `${m} minutes. Just sitting. No object, no technique.`,
+      count:  `Count each exhalation, one through ten, and return whenever you drift.`,
+      follow: `Let counting fall away; simply follow the breath as it moves.`,
+      open:   `Just sitting. No object, no technique.`,
     };
     return {
-      min: 0, fixed: true, name: `${m} ${m===1?'Minute':'Minutes'}`,
+      name: `${m} ${m===1?'Minute':'Minutes'}`,
       desc: methodDesc[method], method,
       structure: [{type:'settle',sec:25},{type:'zazen',sec:m*60}],
     };
   }
 
-  function currentStage() {
-    if (fixedMinutes > 0) return fixedStage();
-    const n = totalSits();
-    let s = STAGES[0];
-    for (const st of STAGES) if (n >= st.min) s = st;
-    return s;
-  }
-  function nextStage() {
-    if (fixedMinutes > 0) return null;   // no "next" while a length is held
-    const n = totalSits();
-    for (const st of STAGES) if (n < st.min) return st;
-    return null;
-  }
-
   const PHASE_META = {
     settle: { label: "Settling", guide: "Arrive. Find the posture. Let the body grow still before the bell." },
-    zazen:  { label: "Zazen",   guide: null }, // guide filled from stage method
-    kinhin: { label: "Kinhin",  guide: "Rise slowly. Walk at half a breath per step, hands at the chest. Carry the stillness." },
+    zazen:  { label: "Zazen",   guide: null }, // the sit itself is silent
   };
 
   // Settling cues rotate while the settle phase runs. First is always the
@@ -1237,27 +1225,70 @@
     ],
   };
   let settleRotator = null;
+  const SETTLE_CUE_SEC = 5;          // seconds each settling cue stays up
+  const CONTROLS_INTRO_MS = 5000;    // how long pause/end show at a sit's start
 
   // ---------- App state ----------
-  let userStructure = null;   // overrides stage structure if adjusted
   let plan = [];              // active phase list
   let phaseIdx = 0;
   let phaseRemain = 0;
   let phaseEndAt = 0;         // wall-clock ms when the current phase ends
   let sessionStartAt = 0;     // wall-clock ms when sitting began (for elapsed)
-  let totalPlanned = 0;
-  let elapsedTotal = 0;
   let timer = null;
   let paused = false;
+  let sessionLive = false;    // true from Begin until the closing bell or End
+  let resumeNotice = false;   // a resumed sit shows a one-line notice until touched
 
   // ---------- Elements ----------
   const el = id => document.getElementById(id);
   const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), log: el('log'), settings: el('settings') };
-  function show(name) { if(name!=='closing') stopCloseGlyph(); Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+  function show(name) {
+    if(name!=='closing') stopCloseGlyph();
+    Object.values(screens).forEach(s=>s.classList.remove('active'));
+    screens[name].classList.add('active');
+    syncHistory(name);
+  }
+
+  // ---------- History: Back returns home, and never abandons a sit ----------
+  // Each screen away from home is a history entry, so the Android Back
+  // gesture (or a browser's Back) steps back to home instead of leaving the
+  // app. During a sit, Back brings pause and end into reach instead.
+  let navFromPop = false;
+  function syncHistory(name){
+    try {
+      if (navFromPop) return;
+      const cur = history.state && history.state.screen;
+      if (cur === name) return;
+      if (name === 'home') history.replaceState({ screen: 'home' }, '');
+      else if (name === 'closing' && cur === 'practice') history.replaceState({ screen: 'closing' }, '');   // stands in for the sit
+      else history.pushState({ screen: name }, '');
+    } catch(e){}
+  }
+  function goHome(){
+    renderHome();
+    let cur = null;
+    try { cur = history.state && history.state.screen; } catch(e){}
+    if (cur && cur !== 'home' && history.length > 1) history.back();   // popstate shows home
+    else show('home');
+  }
+  window.addEventListener('popstate', (e)=>{
+    const target = (e.state && e.state.screen) || 'home';
+    if (sessionLive && target !== 'practice'){
+      try { history.pushState({ screen: 'practice' }, ''); } catch(err){}
+      showControls();
+      return;
+    }
+    navFromPop = true;
+    try {
+      if (target === 'log'){ renderLog(); show('log'); }
+      else if (target === 'settings'){ renderSettings(); show('settings'); }
+      else { exitFullscreen(); renderHome(); show('home'); }   // practice/closing are never re-entered by history
+    } finally { navFromPop = false; }
+  });
 
   // ---------- Home rendering ----------
-  function fmtMin(sec){ return Math.round(sec/60); }
   function planFromStage(stage){ return stage.structure.map(p=>({...p})); }
+  function plural(n, one, many){ return n === 1 ? one : (many || one + 's'); }
 
   function renderHome() {
     const stage = currentStage();
@@ -1278,43 +1309,14 @@
       if (diff === 0) gapNote = "You have already sat today.";
       else if (diff === 1) gapNote = "Yesterday you sat.";
       else gapNote = `${diff} days since the last sitting.`;
-      el('statLine').innerHTML = `<b>${n}</b> sittings across <b>${days}</b> days.<br>${gapNote}`;
+      el('statLine').innerHTML = `<b>${n}</b> ${plural(n,'sitting')} across <b>${days}</b> ${plural(days,'day')}.<br>${gapNote}`;
     }
 
     // stage
     el('stageName').textContent = stage.name;
     el('stageDesc').textContent = stage.desc;
-    const nx = nextStage();
-    if (nx) {
-      const remaining = nx.min - n;
-      const note = document.createElement('span');
-      note.style.cssText = 'display:block;margin-top:8px;color:var(--ink-faint);font-size:0.85rem;';
-      note.textContent = `${remaining} more ${remaining === 1 ? 'sitting' : 'sittings'} until ${nx.name}.`;
-      el('stageDesc').appendChild(note);
-    }
 
-    // plan row (reflect active structure)
-    const struct = userStructure || planFromStage(stage);
-    renderPlan(struct);
     renderAdjust(stage);
-  }
-
-  function renderPlan(struct){
-    const row = el('planRow');
-    row.innerHTML = '';
-    const total = struct.reduce((a,p)=>a+p.sec,0);
-    struct.forEach((p,i)=>{
-      const seg = document.createElement('span');
-      seg.className = 'seg';
-      const label = p.type === 'settle' ? 'settle' : p.type === 'kinhin' ? 'walk' : 'sit';
-      seg.textContent = `${label} ${fmtMin(p.sec)}m`;
-      row.appendChild(seg);
-      if (i < struct.length-1){ const d=document.createElement('span'); d.className='dot'; d.textContent='·'; row.appendChild(d); }
-    });
-    const tot = document.createElement('span');
-    tot.className='seg'; tot.style.marginLeft='10px'; tot.style.color='var(--ember)';
-    tot.textContent = `(${fmtMin(total)}m)`;
-    row.appendChild(tot);
   }
 
   function renderAdjust(stage){
@@ -1327,36 +1329,30 @@
     FIXED_CHOICES.forEach(m=>{
       const b = document.createElement('button');
       b.textContent = `${m} min`;
+      b.setAttribute('aria-pressed', String(fixedMinutes === m));
       if (fixedMinutes === m) b.classList.add('on');
       b.onclick = ()=>{
         fixedMinutes = m;
         sSet(FIXED_KEY, String(m));
-        userStructure = null;
         renderHome();
       };
       row.appendChild(b);
     });
   }
 
-  function scaleStructure(struct, factor){
-    return struct.map(p=>{
-      if (p.type==='settle') return {...p};
-      return { ...p, sec: Math.max(60, Math.round(p.sec*factor/60)*60) };
-    });
-  }
-
   // ---------- Practice flow ----------
   function startPractice(){
     const stage = currentStage();
-    plan = userStructure || planFromStage(stage);
+    plan = planFromStage(stage);
     phaseIdx = 0;
-    elapsedTotal = 0;
-    totalPlanned = plan.reduce((a,p)=>a+p.sec,0);
     paused = false;
     sessionStartAt = Date.now();
+    sessionLive = true;
+    resumeNotice = false;
     el('pauseBtn').textContent = 'Pause';
-    el('controlsRow').classList.remove('show');   // begin each sit bare
-    clearTimeout(controlsHideTimer);
+    // Show pause and end for a few seconds, so their existence is learned
+    // before the screen goes bare; a touch brings them back at any time.
+    showControls(CONTROLS_INTRO_MS);
     // Unlock audio on this user gesture: create + resume + play a silent blip so
     // iOS marks the context as user-activated. Without this, later bells stay mute.
     ensureAudio();
@@ -1378,59 +1374,59 @@
 
   function startPhase(){
     const phase = plan[phaseIdx];
-    phaseRemain = phase.sec;
-    phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
-    resetAsh();   // fresh stick for this phase
-    const meta = PHASE_META[phase.type];
-    // The sit itself is unlabeled — no title over the stillness. Settling and
-    // kinhin keep their labels as gentle guidance.
-    el('phaseLabel').textContent = phase.type === 'zazen' ? '' : meta.label;
-    stopSettleCues();
     const isSettle = phase.type === 'settle';
-    el('skipHint').classList.toggle('disp-hidden', !isSettle);
-    el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
-    if (phase.type === 'settle') {
+    let cues = null;
+    if (isSettle) {
       const stage = currentStage();
-      const cues = (SETTLE_CUES[stage.method] || SETTLE_CUES.count).slice();
+      cues = (SETTLE_CUES[stage.method] || SETTLE_CUES.count).slice();
       // iPhones can't hide the status bar in portrait; held sideways, iOS
       // clears it on its own. Only offer the cue where it's actually needed —
       // platforms with the Fullscreen API already sit on a clean screen.
       if (!fullscreenSupported()){
         cues.splice(1, 0, "Turn the phone sideways, and the clock and battery fall away.");
       }
-      if (kyosakuAvailable()){
-        cues.push("If you feel yourself drifting, touch the screen to receive the stick.");
-      }
+      cues.push(kyosakuAvailable()
+        ? "If you drift, a single touch asks for the stick. Two touches find pause and end."
+        : "Touch the screen at any time to find pause and end.");
+      // Each cue needs its seconds on screen. Stretch the settle to fit them
+      // all, rather than letting the last cue fall past the opening bell.
+      phase.sec = Math.max(phase.sec, cues.length * SETTLE_CUE_SEC);
+    }
+    phaseRemain = phase.sec;
+    phaseEndAt = Date.now() + phase.sec * 1000;   // wall-clock deadline
+    resetAsh();   // fresh stick for this phase
+    const meta = PHASE_META[phase.type];
+    // The sit itself is unlabeled — no title over the stillness. Settling
+    // keeps its label as gentle guidance.
+    el('phaseLabel').textContent = phase.type === 'zazen' ? '' : meta.label;
+    stopSettleCues();
+    el('skipHint').classList.toggle('disp-hidden', !isSettle);
+    el('orbWrap').style.cursor = isSettle ? 'pointer' : 'default';
+    if (isSettle) {
       startSettleCues(cues);
-    } else if (phase.type === 'kinhin') {
-      el('phaseGuide').textContent = meta.guide;
     } else {
       // zazen: silence. No guidance text to disturb the sitting.
       el('phaseGuide').textContent = '';
     }
-    // Opening signals follow tradition. The settle phase already opened with
-    // the han in startPractice, so we only sound openings for sits and walks.
-    if (phaseIdx > 0) {
-      if (phase.type === 'zazen') {
-        // Shijosho: two strikes of the keisu to begin a sitting.
-        keisu(2, 2.6);
-      } else if (phase.type === 'kinhin') {
-        // Two sharp taku to signal rising into walking meditation.
-        taku(2, 0.5);
-      }
-    } else if (phase.type === 'zazen') {
-      // First phase is a bare zazen (no settle in this structure): still open it.
+    // Opening signal: the settle already opened with the han in startPractice;
+    // shijosho, two strikes of the keisu, begins the sitting itself.
+    if (phase.type === 'zazen') {
       keisu(2, 2.6);
+      buzz([80, 140, 80]);               // two pulses, like the two strikes
+      showControls(CONTROLS_INTRO_MS);   // a last glimpse of pause and end
     }
     applyDisplayVisibility();
     drawProgress(true);
+    saveLive();   // the sit survives a reload or the app being put away
   }
 
   function startSettleCues(cues){
     const guideEl = el('phaseGuide');
     let i = 0;
     const slots = cues.length;
-    const interval = Math.max(5000, Math.floor((phaseRemain * 1000) / slots));
+    // The settle was sized in startPhase so every cue gets SETTLE_CUE_SEC;
+    // the floor here only guards a phase that somehow came in shorter.
+    const interval = Math.max(4000, Math.floor((phaseRemain * 1000) / slots));
 
     // Put the text in place while fully invisible, force the browser to finish
     // laying it out (including text-wrap: balance) by reading a layout value,
@@ -1472,17 +1468,9 @@
   }
 
   function advancePhase(){
-    const ending = plan[phaseIdx];
     phaseIdx++;
-    // Closing signal for the phase that just finished.
-    if (ending && ending.type === 'zazen' && phaseIdx < plan.length) {
-      // A single inkin ends the sitting (its brightness lifts you out of stillness).
-      inkin(1);
-    }
     if (phaseIdx >= plan.length){ finish(); return; }
-    // The next phase's opening signal is sounded inside startPhase.
-    // Small delay so a closing inkin isn't stepped on by the next opening.
-    setTimeout(startPhase, ending && ending.type === 'zazen' ? 1400 : 0);
+    startPhase();   // sounds its own opening signal
   }
 
   // Tapping the orb during settling skips the rest of the arriving phase and
@@ -1631,6 +1619,8 @@
   // or 'random' (picks one per session). Persisted; the selector lives in settings.
   const DISPLAY_KEY = 'zazen.display.v1';
   let displayMode = 'auto';
+  const KYOSAKU_KEY = 'zazen.kyosaku.v1';   // '1' when the stick is offered
+  let kyosakuOn = false;
   let activeDisplay = 'ring'; // resolved mode for this session
 
   // ---- Incense ash: segments that accumulate above the ember and shed ----
@@ -1728,8 +1718,10 @@
     return longest >= 300;
   }
   function kyosakuAvailable(){
-    // The kyōsaku (tap-to-receive strike) is offered on every sitting length.
-    return true;
+    // The kyōsaku (tap-to-receive strike) is opt-in from settings, on any
+    // length. Off by default: a first exploratory touch should not be met
+    // with a crack of wood.
+    return kyosakuOn;
   }
   function resolveDisplay(){
     if (displayMode === 'auto') {
@@ -1763,6 +1755,12 @@
   function drawProgress(instant){
     const phase = plan[phaseIdx];
     const frac = phase.sec ? (phase.sec - phaseRemain)/phase.sec : 0; // 0→1 elapsed
+    // Screen readers get the time as words; the display itself is decorative.
+    {
+      const mm = Math.floor(phaseRemain / 60), ss = phaseRemain % 60;
+      const left = mm ? `${mm} ${plural(mm,'minute')}${ss ? ` ${ss} ${plural(ss,'second')}` : ''}` : `${ss} ${plural(ss,'second')}`;
+      el('orbWrap').setAttribute('aria-label', `${PHASE_META[phase.type].label}, ${left} remaining${paused ? ', paused' : ''}`);
+    }
     const animated = [el('progRing'), el('sandTop'), el('sandBot'), el('incStick'), el('incEmber')];
     if (instant) {
       // Suppress transitions for this draw so a phase reset snaps to its start
@@ -1821,28 +1819,26 @@
   function finish(){
     clearInterval(timer); timer = null; stopSettleCues();
     keisuRollDown();
+    buzz([120, 160, 120, 160, 120]);   // three pulses, like the three strikes
     const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
     record(sitMinutes);
-    let note;
-    if (testingMode) {
-      note = `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
-    } else {
-      const n = totalSits();
-      const nx = nextStage();
-      note = `${sitMinutes} minutes of zazen. The ${ordinal(n)} sitting.`;
-      if (fixedMinutes > 0){ note += `<br>Held steady. Return tomorrow.`; }
-      else if (nx){ const left = nx.min - n; note += `<br>${left} more until <i>${nx.name}</i>.`; }
-      else { note += `<br>The full rhythm is yours now.`; }
-    }
-    el('sitSummary').innerHTML = note;
+    el('sitSummary').innerHTML = finishSummary(sitMinutes);
+    sessionLive = false; clearLive();
     releaseWakeLock();
     renderVows();
     show('closing');
+  }
+  // The closing line for a completed sit (after it has been recorded).
+  function finishSummary(sitMinutes){
+    if (testingMode) return `${sitMinutes} minutes of zazen.<br>Testing sitting — not added to the record.`;
+    const n = totalSits();
+    return `${sitMinutes} ${plural(sitMinutes,'minute')} of zazen. The ${ordinal(n)} sitting.<br>Held steady. Return tomorrow.`;
   }
 
   function endEarly(){
     clearInterval(timer); timer = null; stopSettleCues();
     keisu(2, 2.8);
+    buzz([120, 160, 120]);
     // Zazen minutes actually elapsed: completed zazen phases plus the current
     // partial one if we're mid-sit. Computed from wall clock, so sleep is fine.
     const zMin = elapsedZazenMinutes();
@@ -1857,9 +1853,83 @@
         ? `${zMin} minutes. Ended early, which is also practice.<br>The ${ordinal(n)} sitting.`
         : `A brief sitting. No mark made; begin again whenever.`;
     }
+    sessionLive = false; clearLive();
     releaseWakeLock();
     renderVows();
     show('closing');
+  }
+
+  // ---------- The live sit, kept across a reload or the app being put away ----------
+  // Enough to pick the sit up by wall clock: the plan, where we are in it,
+  // and when the current phase ends. Written at each phase start and on
+  // pause/resume; cleared when the sit closes or is ended.
+  const LIVE_KEY = 'zazen.live.v1';
+  function saveLive(){
+    if (!sessionLive) return;
+    sSet(LIVE_KEY, JSON.stringify({ plan, phaseIdx, phaseEndAt, paused, phaseRemain,
+      sessionStartAt, testingMode, activeDisplay, savedAt: Date.now() }));
+  }
+  function clearLive(){ try { localStorage.removeItem(LIVE_KEY); } catch(e){} }
+  function resumeLive(){
+    const raw = sGet(LIVE_KEY);
+    if (!raw) return;
+    let s = null;
+    try { s = JSON.parse(raw); } catch(e){}
+    if (!s || !Array.isArray(s.plan) || !s.plan.length || !(s.phaseIdx < s.plan.length)){ clearLive(); return; }
+    const now = Date.now();
+    plan = s.plan; phaseIdx = s.phaseIdx | 0;
+    testingMode = !!s.testingMode;
+    sessionStartAt = s.sessionStartAt || now;
+    activeDisplay = s.activeDisplay || 'ring';
+    if (s.paused){
+      paused = true;
+      phaseRemain = Math.max(0, s.phaseRemain | 0);
+      phaseEndAt = now + phaseRemain * 1000;
+    } else {
+      // Walk forward by wall clock through any phases that ended while away.
+      let endAt = Number(s.phaseEndAt);
+      if (!isFinite(endAt) || endAt <= 0){ clearLive(); return; }
+      while (phaseIdx < plan.length && now >= endAt){
+        phaseIdx++;
+        if (phaseIdx < plan.length) endAt += plan[phaseIdx].sec * 1000;
+      }
+      if (phaseIdx >= plan.length){
+        // The sit finished on its own while the app was away. Mark it, dated
+        // by its end; show the closing if that was recent, else just home.
+        clearLive();
+        const sitMinutes = Math.round(plan.filter(p=>p.type==='zazen').reduce((a,p)=>a+p.sec,0)/60);
+        record(sitMinutes, endAt);
+        if (now - endAt < 60 * 60 * 1000){
+          el('sitSummary').innerHTML = finishSummary(sitMinutes);
+          renderVows();
+          show('closing');
+        } else {
+          renderHome();
+        }
+        return;
+      }
+      paused = false;
+      phaseEndAt = endAt;
+      phaseRemain = Math.max(0, Math.round((endAt - now) / 1000));
+    }
+    sessionLive = true;
+    resumeNotice = true;
+    resetAsh();
+    const phase = plan[phaseIdx];
+    el('phaseLabel').textContent = phase.type === 'zazen' ? '' : PHASE_META[phase.type].label;
+    el('skipHint').classList.toggle('disp-hidden', phase.type !== 'settle');
+    el('orbWrap').style.cursor = phase.type === 'settle' ? 'pointer' : 'default';
+    // The bell needs a touch to sound again after a reload; say so once.
+    el('phaseGuide').textContent = 'The sitting continues. Touch once, so the bell can sound.';
+    el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
+    applyDisplayVisibility();
+    show('practice');
+    showControls(paused ? undefined : CONTROLS_INTRO_MS);
+    if (paused) clearTimeout(controlsHideTimer);
+    acquireWakeLock();
+    drawProgress(true);
+    runTimer();
+    saveLive();
   }
 
   function elapsedZazenMinutes(){
@@ -1884,25 +1954,45 @@
     const arr = load();
     const grid = el('logGrid');
     grid.innerHTML = '';
-    // last 28 days
+    // last 28 days, today in the bottom-right corner; the weekday row above
+    // is aligned to whatever day the first column falls on.
     const today = parseDay(dayStr(new Date()));
+    const minutesByDay = {};
+    arr.forEach(s => { minutesByDay[s.d] = (minutesByDay[s.d] || 0) + (s.m || 0); });
     const sat = new Set(arr.map(s=>s.d));
+    const WEEKDAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const first = new Date(today); first.setDate(first.getDate() - 27);
+    const week = el('logWeek');
+    week.innerHTML = '';
+    for (let c = 0; c < 7; c++){
+      const w = document.createElement('div');
+      w.textContent = WEEKDAY[(first.getDay() + c) % 7][0];
+      week.appendChild(w);
+    }
     for (let i=27;i>=0;i--){
       const d = new Date(today); d.setDate(d.getDate()-i);
       const ds = dayStr(d);
       const c = document.createElement('div');
       c.className = 'log-cell' + (sat.has(ds)?' lit':'') + (i===0?' today':'');
+      const when = `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()]}`;
+      const what = sat.has(ds) ? `${minutesByDay[ds]} ${plural(minutesByDay[ds],'minute')}` : 'no sitting';
+      c.setAttribute('role', 'listitem');
+      c.setAttribute('aria-label', `${when}${i===0?' (today)':''}: ${what}`);
+      c.title = `${when} · ${what}`;
       grid.appendChild(c);
     }
     const n = arr.length;
-    const days = new Set(arr.map(s=>s.d)).size;
+    const days = sat.size;
     const totalMin = arr.reduce((a,s)=>a+(s.m||0),0);
-    // current streak
+    // current streak: today if already sat, otherwise counted back from
+    // yesterday, since today is still open.
     let streak = 0; let cur = new Date(today);
+    if (!sat.has(dayStr(cur))) cur.setDate(cur.getDate()-1);
     while (sat.has(dayStr(cur))){ streak++; cur.setDate(cur.getDate()-1); }
     el('logStats').innerHTML =
-      `<b>${n}</b> sittings · <b>${days}</b> days · <b>${totalMin}</b> minutes<br>` +
-      (streak>0?`current thread: <b>${streak}</b> ${streak===1?'day':'days'}`:`the cushion waits`);
+      `<b>${n}</b> ${plural(n,'sitting')} · <b>${days}</b> ${plural(days,'day')} · <b>${totalMin}</b> ${plural(totalMin,'minute')}<br>` +
+      (streak>0?`current streak: <b>${streak}</b> ${plural(streak,'day')}`:`the cushion waits`);
   }
 
   // ---------- Wiring ----------
@@ -1921,6 +2011,7 @@
     }
     el('pauseBtn').textContent = paused ? 'Resume' : 'Pause';
     drawProgress();
+    saveLive();
   };
   el('endBtn').onclick = endEarly;
   // When the screen wakes or the tab refocuses, audio may be suspended and the
@@ -1929,8 +2020,8 @@
   document.addEventListener('visibilitychange', ()=>{
     if (document.visibilityState === 'visible') {
       if (actx && actx.state === 'suspended') actx.resume();
-      const sessionLive = timer && phaseIdx < plan.length;
-      if (sessionLive) {
+      const live = timer && phaseIdx < plan.length;
+      if (live) {
         acquireWakeLock();   // iOS releases the lock on backgrounding
         if (!paused) tick();
       }
@@ -1946,7 +2037,11 @@
     const phase = plan[phaseIdx];
     if (!phase || paused) return;
     if (phase.type === 'settle'){ skipSettle(); return; }
-    if (phase.type === 'zazen' && kyosakuAvailable() && !kyosakuCeremonyActive){ kyosakuCeremony(); }
+    if (phase.type !== 'zazen') return;
+    // With the stick offered, a lone touch requests it; otherwise a touch is
+    // simply the way to find pause and end.
+    if (kyosakuAvailable()){ if (!kyosakuCeremonyActive) kyosakuCeremony(); }
+    else showControls();
   }
 
   // The request → bow → strike exchange (~6.5s). The active timer display fades
@@ -1980,20 +2075,24 @@
   // Controls are summoned by double-tap and retire on their own after a few
   // seconds — unless paused, when they stay so Resume remains within reach.
   let controlsHideTimer = null;
-  function scheduleControlsHide(){
+  function scheduleControlsHide(ms){
     clearTimeout(controlsHideTimer);
-    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, 4000);
+    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, ms || 4000);
   }
-  function showControls(){
+  function showControls(ms){
     el('controlsRow').classList.add('show');
     clearTimeout(controlsHideTimer);
-    if (!paused) scheduleControlsHide();
+    if (!paused) scheduleControlsHide(ms);
   }
   // Whole-screen tap during practice, so eyes can stay closed. A lone tap is
   // the kyōsaku request (or the settle skip); two taps within 300ms summon
   // the pause/end controls instead.
   let tapTimer = null;
   el('practice').addEventListener('click', (e)=>{
+    // Any touch is a user gesture: let it wake the audio context, so a sit
+    // resumed after a reload gets its bell back.
+    try { ensureAudio(); } catch(err){}
+    if (resumeNotice){ resumeNotice = false; if (plan[phaseIdx] && plan[phaseIdx].type === 'zazen') el('phaseGuide').textContent = ''; }
     // Ignore taps on the controls themselves so they keep their own actions.
     if (e.target.closest('button')) return;
     if (tapTimer){
@@ -2003,26 +2102,70 @@
     }
     tapTimer = setTimeout(()=>{ tapTimer = null; practiceTap(); }, 300);
   });
-  el('cycleBtn').onclick = ()=>{
-    const order = incenseAvailable() ? ['ring','glass','incense'] : ['ring','glass'];
-    const idx = order.indexOf(activeDisplay);
-    activeDisplay = order[(idx + 1) % order.length];
-    applyDisplayVisibility();
-    drawProgress(true);
-  };
   el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
-  el('settingsReturn').onclick = ()=>{ renderHome(); show('home'); };
+  el('settingsReturn').onclick = ()=>{ flushVowSave(); goHome(); };
+  el('settingsReturnTop').onclick = el('settingsReturn').onclick;
   el('testToggle').onclick = ()=>{
     testingMode = !testingMode;
     renderSettings();
     // reflect on home immediately next time it's shown
   };
-  el('addPastSit').onclick = ()=>{
-    const arr = load().slice();
-    arr.push({ d: dayStr(new Date()), m: 0, t: Date.now(), past: true });
-    save(arr);
+  el('bellTest').onclick = ()=>{ keisu(1); buzz([60]); };
+  el('kyosakuToggle').onclick = ()=>{
+    kyosakuOn = !kyosakuOn;
+    sSet(KYOSAKU_KEY, kyosakuOn ? '1' : '0');
     renderSettings();
+  };
+  // A touch on the closing screen skips ahead to the vows (buttons keep
+  // their own actions).
+  el('closing').addEventListener('click', (e)=>{
+    if (e.target.closest('button')) return;
+    skipClosing();
+  });
+  // A past sitting takes a date and a length, and can be taken back for a
+  // few seconds afterwards.
+  let pastMinutes = 0;          // 0 = follow the current sitting length
+  let lastPastEntry = null;
+  let pastUndoTimer = null;
+  function renderPastLenRow(){
+    const row = el('pastLenRow');
+    row.innerHTML = '';
+    const chosen = pastMinutes || fixedMinutes;
+    FIXED_CHOICES.forEach(m=>{
+      const b = document.createElement('button');
+      b.textContent = `${m} min`;
+      b.setAttribute('aria-pressed', String(chosen === m));
+      if (chosen === m) b.classList.add('on');
+      b.onclick = ()=>{ pastMinutes = m; renderPastLenRow(); };
+      row.appendChild(b);
+    });
+  }
+  el('addPastSit').onclick = ()=>{
+    const date = el('pastDate').value;
+    const today = dayStr(new Date());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > today){
+      el('pastSitState').textContent = 'Choose a day up to today.';
+      return;
+    }
+    const entry = { d: date, m: pastMinutes || fixedMinutes, t: Date.now(), past: true };
+    const arr = load().slice();
+    arr.push(entry);
+    arr.sort((a,b)=> a.d < b.d ? -1 : a.d > b.d ? 1 : (a.t||0) - (b.t||0));
+    save(arr);
+    lastPastEntry = entry;
+    el('pastSitState').textContent = `Added ${entry.m} min on ${date}. ${totalSits()} recorded.`;
+    el('pastUndo').classList.remove('disp-hidden');
+    clearTimeout(pastUndoTimer);
+    pastUndoTimer = setTimeout(()=>{ el('pastUndo').classList.add('disp-hidden'); lastPastEntry = null; }, 8000);
+  };
+  el('pastUndo').onclick = ()=>{
+    if (!lastPastEntry) return;
+    save(load().filter(s => s !== lastPastEntry));
+    lastPastEntry = null;
+    clearTimeout(pastUndoTimer);
+    el('pastUndo').classList.add('disp-hidden');
+    el('pastSitState').textContent = `Taken back. ${totalSits()} recorded.`;
   };
   el('exportBtn').onclick = ()=>{
     const payload = { v: 1, sessions: load(), vows: loadVows() };
@@ -2035,9 +2178,28 @@
     el('exportBtn').textContent = 'copied';
     setTimeout(()=>{ el('exportBtn').textContent = 'copy backup'; }, 1400);
   };
+  // Two-step actions for anything that overwrites the record or the vows:
+  // the first tap arms the button, a second tap within a few seconds acts.
+  function armConfirm(btn, armedText, idleText, action){
+    if (btn.dataset.armed){
+      clearTimeout(btn._armTimer);
+      delete btn.dataset.armed;
+      btn.classList.remove('armed');
+      btn.textContent = idleText;
+      action();
+      return;
+    }
+    btn.dataset.armed = '1';
+    btn.classList.add('armed');
+    btn.textContent = armedText;
+    btn._armTimer = setTimeout(()=>{ delete btn.dataset.armed; btn.classList.remove('armed'); btn.textContent = idleText; }, 4000);
+  }
   el('importBtn').onclick = ()=>{
     const raw = el('backupBox').value.trim();
     if (!raw){ el('importBtn').textContent = 'paste a code first'; setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600); return; }
+    armConfirm(el('importBtn'), 'tap again to replace the record', 'restore from backup', ()=>importBackup(raw));
+  };
+  function importBackup(raw){
     try {
       const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
       // Keep only well-formed entries so a corrupted code can't fill the
@@ -2057,20 +2219,33 @@
       el('importBtn').textContent = 'invalid code';
       setTimeout(()=>{ el('importBtn').textContent = 'restore from backup'; }, 1600);
     }
-  };
-  el('vowSave').onclick = ()=>{
-    // Keep all four slots (empty = omitted) so each line stays under its
-    // traditional-vow label in the editor and its beat in the closing glyph.
-    const lines = Array.from(el('vowEditor').querySelectorAll('textarea'))
-      .map(t=>t.value.trim());
-    if (lines.some(t=>t.length)) { saveVows(lines); }
-    else { saveVows(DEFAULT_VOWS.slice()); }
-    el('vowSave').textContent = 'saved';
-    setTimeout(()=>{ el('vowSave').textContent = 'save'; }, 1400);
-  };
+  }
+  // The vows save themselves as you type (a short debounce), and are flushed
+  // on return. All four slots are kept (empty = omitted) so each line stays
+  // under its traditional-vow label and its beat in the closing glyph. Four
+  // empty lines mean a silent closing.
+  let vowSaveTimer = null;
+  function saveVowsFromEditor(){
+    const lines = Array.from(el('vowEditor').querySelectorAll('textarea')).map(t=>t.value.trim());
+    saveVows(lines);
+    const flash = el('vowSaved');
+    flash.textContent = 'saved';
+    clearTimeout(flash._t);
+    flash._t = setTimeout(()=>{ flash.textContent = ''; }, 1400);
+  }
+  function queueVowSave(){
+    clearTimeout(vowSaveTimer);
+    vowSaveTimer = setTimeout(()=>{ vowSaveTimer = null; saveVowsFromEditor(); }, 600);
+  }
+  function flushVowSave(){
+    if (vowSaveTimer){ clearTimeout(vowSaveTimer); vowSaveTimer = null; saveVowsFromEditor(); }
+  }
   el('vowReset').onclick = ()=>{
-    saveVows(DEFAULT_VOWS.slice());
-    renderSettings();
+    armConfirm(el('vowReset'), 'tap again to replace your vows', 'restore traditional vows', ()=>{
+      clearTimeout(vowSaveTimer); vowSaveTimer = null;
+      saveVows(DEFAULT_VOWS.slice());
+      renderSettings();
+    });
   };
 
   function renderDisplayRow(){
@@ -2087,6 +2262,7 @@
     opts.forEach(o=>{
       const b = document.createElement('button');
       b.textContent = o.label;
+      b.setAttribute('aria-pressed', String(displayMode === o.k));
       if (displayMode === o.k) b.classList.add('on');
       b.onclick = ()=>{
         displayMode = o.k;
@@ -2100,9 +2276,17 @@
   function renderSettings(){
     const tog = el('testToggle');
     tog.classList.toggle('on', testingMode);
+    tog.setAttribute('aria-checked', String(testingMode));
     el('testState').textContent = testingMode ? 'on' : 'off';
     el('testBanner').classList.toggle('disp-hidden', !testingMode);
-    el('pastSitState').textContent = totalSits() + ' recorded';
+    el('kyosakuToggle').classList.toggle('on', kyosakuOn);
+    el('kyosakuToggle').setAttribute('aria-checked', String(kyosakuOn));
+    el('kyosakuState').textContent = kyosakuOn ? 'on' : 'off';
+    el('pastSitState').textContent = totalSits() + ' recorded.';
+    const pd = el('pastDate');
+    pd.max = dayStr(new Date());
+    if (!pd.value) pd.value = pd.max;
+    renderPastLenRow();
     renderDisplayRow();
     // Build vow editor: four fields, each labeled with the traditional vow it
     // corresponds to, with the practitioner's custom line as the editable value.
@@ -2118,17 +2302,20 @@
       ta.rows = 2;
       ta.value = vows[i] || '';
       ta.placeholder = 'your vow, or leave empty';
+      ta.addEventListener('input', queueVowSave);
       ed.appendChild(ta);
     }
   }
-  el('logReturn').onclick = ()=>{ renderHome(); show('home'); };
-  el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
+  el('logReturn').onclick = goHome;
+  el('closeReturn').onclick = ()=>{ exitFullscreen(); goHome(); };
 
   // init: paint immediately with empty caches, then re-render once the
   // persistent store has loaded.
-  try { el('versionMark').textContent = 'v' + APP_VERSION + ' · standalone'; } catch(e){}
+  try { el('versionMark').textContent = 'version ' + APP_VERSION; } catch(e){}
+  try { history.replaceState({ screen: 'home' }, ''); } catch(e){}
   renderHome();
   initStorage();
+  resumeLive();   // pick up a sit that a reload or the OS interrupted
 })();
 </script>
 </body>
