@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>呼吸 · Breathing</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Breathe">
+<meta name="theme-color" content="#161109">
+<link rel="manifest" href="breathe.webmanifest">
+<link rel="apple-touch-icon" href="breathe-apple-touch-icon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=EB+Garamond:ital@0;1&display=swap');
+
+  :root {
+    --bg: #20190f;
+    --bg-deep: #161109;
+    --ink: #fbf3e2;
+    --ink-dim: #cdbd9d;
+    --ink-faint: #97886c;
+    --ember: #f0a860;
+    --ember-soft: #d4884a;
+    --line: rgba(205, 189, 157, 0.22);
+    --glow: rgba(240, 168, 96, 0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg-deep);
+    color: var(--ink);
+    font-family: 'EB Garamond', Georgia, serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100dvh; position: relative;
+    user-select: none; -webkit-user-select: none;
+  }
+
+  .atmosphere {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 42%, rgba(240,168,96,0.13), transparent 70%),
+      radial-gradient(ellipse 120% 100% at 50% 50%, var(--bg) 0%, var(--bg-deep) 88%);
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 1; opacity: 0.035; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
+  .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
+  .screen.active { display: flex; }
+  #home.active { max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+  /* ---- Home ---- */
+  .title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.5em; font-size: 1.05rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 4px; padding-left: 0.5em; }
+  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3.4rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 26px; text-shadow: 0 0 40px var(--glow); }
+  .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 26px; max-width: 320px; text-wrap: balance; min-height: 3.2em; }
+  .row-label { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 4px; }
+
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  .begin {
+    border: 1px solid var(--ember-soft); color: var(--ink);
+    padding: 16px 54px; border-radius: 2px; font-size: 0.95rem; letter-spacing: 0.26em; text-transform: uppercase;
+    background: rgba(217,139,74,0.05); transition: all 0.5s ease; margin: 6px 0 26px;
+  }
+  .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
+
+  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-bottom: 22px; max-width: 340px; }
+  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
+  .adjust button:hover { color: var(--ink-dim); }
+  .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
+  .adjust button small { font-size: 0.72rem; letter-spacing: 0.05em; color: var(--ink-faint); margin-left: 4px; }
+
+  /* Custom rhythm steppers: only shown when the custom rhythm is chosen. */
+  .custom { display: none; gap: 30px; margin: -8px 0 22px; }
+  .custom.show { display: flex; }
+  .stepper { display: flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: 0.9rem; font-style: italic; }
+  .stepper button { color: var(--ink-faint); font-size: 1.2rem; padding: 4px 10px; font-style: normal; }
+  .stepper button:hover { color: var(--ink-dim); }
+  .stepper b { color: var(--ink); font-weight: 400; font-style: normal; min-width: 1.2em; text-align: center; }
+
+  .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
+  .ghost-link:hover { color: var(--ink-dim); }
+  .ghost-row { display: flex; gap: 24px; align-items: center; }
+  .side-note { margin-top: 14px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; text-align: center; line-height: 1.6; max-width: 300px; text-wrap: balance; }
+  .version { color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 14px; }
+
+  /* ---- Session: the bare screen. Nothing but the canvas. ---- */
+  #session { position: fixed; inset: 0; z-index: 5; display: none; background: var(--bg-deep); }
+  #session.active { display: block; animation: fade 1.2s ease; }
+  #breathCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Controls stay out of sight; a double-tap summons them and they slip away
+     again if left untouched (or stay while paused). Positioned within the safe
+     area so they clear the home indicator. */
+  .controls {
+    position: absolute; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom));
+    display: flex; gap: 28px; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
+  }
+  .controls.show { opacity: 1; pointer-events: auto; }
+  .controls button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; padding: 12px 14px; transition: color 0.4s; }
+  .controls button:hover { color: var(--ink-dim); }
+
+  /* ---- Closing ---- */
+  #closing.active { min-height: calc(100dvh - 56px); justify-content: center; }
+  .summary { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.5rem; line-height: 1.5; color: var(--ink-dim); text-align: center; text-wrap: balance; margin-bottom: 28px; opacity: 0; transition: opacity 1.6s ease; }
+  .summary.show { opacity: 1; }
+  #closeReturn { opacity: 0; transition: opacity 1s ease; pointer-events: none; }
+  #closeReturn.show { opacity: 1; pointer-events: auto; }
+
+  @media (orientation: landscape) and (max-height: 520px) {
+    .stage { padding: 12px 28px; }
+    .kanji { margin-bottom: 12px; font-size: 2.6rem; }
+    .stage-desc { margin-bottom: 14px; min-height: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="atmosphere"></div>
+<div class="grain"></div>
+
+<div class="stage">
+
+  <!-- HOME -->
+  <section class="screen active" id="home">
+    <div class="title">Breathing</div>
+    <div class="kanji">呼吸</div>
+    <div class="stage-desc" id="rhythmDesc"></div>
+
+    <div class="row-label">rhythm</div>
+    <div class="adjust" id="rhythmRow"></div>
+    <div class="custom" id="customRow">
+      <div class="stepper">in <button id="inMinus">−</button><b id="inVal">5</b><button id="inPlus">+</button>s</div>
+      <div class="stepper">out <button id="outMinus">−</button><b id="outVal">5</b><button id="outPlus">+</button>s</div>
+    </div>
+
+    <div class="row-label">minutes</div>
+    <div class="adjust" id="lengthRow"></div>
+
+    <div class="adjust" id="optionRow" style="margin-bottom:18px;"></div>
+
+    <button class="begin" id="beginBtn">Begin</button>
+
+    <div class="ghost-row">
+      <button class="ghost-link" id="sittingLink">just sitting</button>
+    </div>
+    <div class="side-note" id="sideNote"></div>
+    <div class="version" id="versionMark"></div>
+  </section>
+
+  <!-- CLOSING -->
+  <section class="screen" id="closing">
+    <div class="summary" id="summary"></div>
+    <button class="ghost-link" id="closeReturn">return</button>
+  </section>
+
+</div>
+
+<!-- SESSION: full-bleed, outside the stage so nothing else is on screen. -->
+<div id="session">
+  <canvas id="breathCanvas"></canvas>
+  <div class="controls" id="controlsRow">
+    <button id="pauseBtn">Pause</button>
+    <button id="endBtn">End</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Shares the service worker (and its version) with the sitting app, so a
+  // bump there refreshes this page too. Keep in step with index.html.
+  const APP_VERSION = '37';
+  const el = id => document.getElementById(id);
+
+  // ---------- PWA glue ----------
+  try {
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).catch(()=>{});
+    }
+  } catch(e){}
+
+  // ---------- Rhythms ----------
+  // Cardiac coherence: six breaths a minute, ten seconds a breath. The split
+  // between in and out sets the tone. Training starts quicker and eases down
+  // to the balanced rhythm over the session, for those new to slow breathing.
+  const RHYTHMS = [
+    { k:'calm',    name:'Calming',    inS:4, outS:6,
+      desc:'Four seconds in, six seconds out. The longer exhalation settles the body. Six breaths a minute.' },
+    { k:'balance', name:'Balanced',   inS:5, outS:5,
+      desc:'Five seconds in, five seconds out. Even and steady. Six breaths a minute.' },
+    { k:'energy',  name:'Energizing', inS:6, outS:4,
+      desc:'Six seconds in, four seconds out. The longer inhalation lifts. Six breaths a minute.' },
+    { k:'train',   name:'Training',   inS:5, outS:5,
+      desc:'Begins at a quicker pace and slows, breath by breath, to five in and five out by the end.' },
+    { k:'custom',  name:'Custom',     inS:5, outS:5,
+      desc:'Set your own count, three to eight seconds each way.' },
+  ];
+  const LENGTHS = [3, 5, 10, 15, 20];
+  const TRAIN_START = 3.5;   // training mode: seconds each way at the start
+
+  // ---------- Settings (persisted) ----------
+  const SET_KEY = 'breathe.settings.v1';
+  const settings = { rhythm:'balance', minutes:5, inS:5, outS:5, sound:true, display:'bubble' };
+  function sGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function sSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  function loadSettings(){
+    try {
+      const s = JSON.parse(sGet(SET_KEY) || '{}');
+      if (RHYTHMS.some(r=>r.k===s.rhythm)) settings.rhythm = s.rhythm;
+      if (LENGTHS.includes(s.minutes)) settings.minutes = s.minutes;
+      if (Number.isInteger(s.inS) && s.inS>=3 && s.inS<=8) settings.inS = s.inS;
+      if (Number.isInteger(s.outS) && s.outS>=3 && s.outS<=8) settings.outS = s.outS;
+      if (typeof s.sound === 'boolean') settings.sound = s.sound;
+      if (s.display === 'bubble' || s.display === 'orb') settings.display = s.display;
+    } catch(e){}
+  }
+  function saveSettings(){ sSet(SET_KEY, JSON.stringify(settings)); }
+
+  function currentRhythm(){ return RHYTHMS.find(r=>r.k===settings.rhythm) || RHYTHMS[1]; }
+  // Seconds in and out for a breath that begins at `frac` (0..1) of the session.
+  function breathTimes(frac){
+    const r = currentRhythm();
+    if (r.k === 'custom') return { inS: settings.inS, outS: settings.outS };
+    if (r.k === 'train'){
+      const s = TRAIN_START + (5 - TRAIN_START) * Math.min(1, Math.max(0, frac));
+      return { inS: s, outS: s };
+    }
+    return { inS: r.inS, outS: r.outS };
+  }
+
+  // ---------- Audio (WebAudio, no files) ----------
+  let actx = null;
+  function ensureAudio(){
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  // A soft cue at each turn of the breath: a little higher as the inhalation
+  // begins, a little lower as the exhalation begins. Brief, so it marks the
+  // turn without filling the silence.
+  function turnTone(inhale){
+    if (!settings.sound) return;
+    try {
+      ensureAudio();
+      const t = actx.currentTime;
+      const f0 = inhale ? 528 : 396;
+      const out = actx.createGain(); out.gain.value = 0.35; out.connect(actx.destination);
+      [[1, 0.5, 1.2], [2.01, 0.12, 0.7], [3.0, 0.05, 0.4]].forEach(([ratio, lvl, decay])=>{
+        const o = actx.createOscillator(); const g = actx.createGain();
+        o.type = 'sine'; o.frequency.value = f0 * ratio;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(lvl, t + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+        o.connect(g); g.connect(out);
+        o.start(t); o.stop(t + decay + 0.05);
+      });
+    } catch(e){}
+  }
+  // The standing bell, to open and close the session.
+  function keisu(strikes = 1, gap = 2.4, level = 1){
+    if (!settings.sound) return;
+    try {
+      ensureAudio();
+      for (let s = 0; s < strikes; s++){
+        const t = actx.currentTime + s * gap;
+        const f0 = 150;
+        const out = actx.createGain(); out.gain.value = 0.8 * level; out.connect(actx.destination);
+        const tone = actx.createBiquadFilter(); tone.type = 'lowpass'; tone.frequency.value = 3200; tone.Q.value = 0.4; tone.connect(out);
+        const partials = [[1.00,0.55,9.0,0],[2.00,0.30,7.0,-4],[2.76,0.42,6.0,5],[3.00,0.16,5.0,-6],[4.07,0.22,4.0,7],[5.43,0.13,3.0,-8],[6.79,0.08,2.2,10],[8.21,0.05,1.6,-9]];
+        partials.forEach(([ratio, lvl, decay, detune])=>{
+          const o = actx.createOscillator(); const g = actx.createGain();
+          o.type = 'sine'; o.frequency.value = f0 * ratio; o.detune.value = detune;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(lvl, t + 0.018);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+          o.connect(g); g.connect(tone);
+          o.start(t); o.stop(t + decay + 0.1);
+        });
+        const noiseLen = 0.06;
+        const buf = actx.createBuffer(1, actx.sampleRate * noiseLen, actx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1);
+        const noise = actx.createBufferSource(); noise.buffer = buf;
+        const nf = actx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = f0 * 5; nf.Q.value = 1.2;
+        const ng = actx.createGain();
+        ng.gain.setValueAtTime(0.12, t);
+        ng.gain.exponentialRampToValueAtTime(0.0001, t + noiseLen);
+        noise.connect(nf); nf.connect(ng); ng.connect(out);
+        noise.start(t); noise.stop(t + noiseLen);
+      }
+    } catch(e){}
+  }
+
+  // ---------- Fullscreen: hide the status bar for the whole session ----------
+  // Entered on Begin (a user gesture, as the API requires). iPhones have no
+  // Fullscreen API for pages; there, holding the phone sideways is what hides
+  // the clock and battery, so the home screen says so.
+  function fullscreenSupported(){
+    const root = document.documentElement;
+    return !!(root.requestFullscreen || root.webkitRequestFullscreen);
+  }
+  function enterFullscreen(){
+    try {
+      if (!fullscreenSupported()) return;
+      const root = document.documentElement;
+      const req = root.requestFullscreen || root.webkitRequestFullscreen;
+      const p = req.call(root, { navigationUI: 'hide' }); if (p && p.catch) p.catch(()=>{});
+    } catch(e){}
+  }
+  function exitFullscreen(){
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) { const p = document.exitFullscreen(); if (p && p.catch) p.catch(()=>{}); }
+      else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e){}
+  }
+
+  // ---------- Wake lock: keep the screen on ----------
+  let wakeLock = null, keepAwakeVideo = null;
+  async function acquireWakeLock(){
+    let ok = false;
+    try { if ('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); ok = true; } } catch(e){}
+    if (!ok) enableVideoKeepAwake();
+  }
+  // Fallback: a muted inline video streamed from the very canvas we draw on.
+  // Active video playback holds the screen awake where the Wake Lock API is
+  // missing; if a platform promotes it to a native player, it shows the scene.
+  function enableVideoKeepAwake(){
+    try {
+      if (!keepAwakeVideo){
+        keepAwakeVideo = document.createElement('video');
+        keepAwakeVideo.srcObject = canvas.captureStream(10);
+        keepAwakeVideo.muted = true; keepAwakeVideo.setAttribute('muted','');
+        keepAwakeVideo.playsInline = true; keepAwakeVideo.setAttribute('playsinline','');
+        keepAwakeVideo.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+        document.body.appendChild(keepAwakeVideo);
+      }
+      keepAwakeVideo.play().catch(()=>{});
+    } catch(e){}
+  }
+  function releaseWakeLock(){
+    try { if (wakeLock){ wakeLock.release(); wakeLock = null; } } catch(e){}
+    try {
+      if (keepAwakeVideo){
+        keepAwakeVideo.pause();
+        if (keepAwakeVideo.webkitExitFullscreen) keepAwakeVideo.webkitExitFullscreen();
+        if (document.fullscreenElement === keepAwakeVideo && document.exitFullscreen) document.exitFullscreen();
+      }
+    } catch(e){}
+  }
+
+  // ---------- Session state ----------
+  // Wall-clock driven, so a throttled tab or dimmed screen never drifts the
+  // rhythm. Each breath is measured from its own start; training mode picks
+  // fresh in/out lengths as each breath begins.
+  const session = {
+    live:false, paused:false,
+    startAt:0, endAt:0, totalMs:0,
+    breathStart:0, inS:5, outS:5, phase:'in',   // 'in' | 'out'
+    breaths:0, pausedAt:0,
+    ending:false, endStart:0,                     // the settle after the last breath
+  };
+  let raf = null;
+
+  function startSession(){
+    ensureAudio();
+    try {   // unlock audio on this gesture (iOS)
+      const s = actx.createOscillator(); const g = actx.createGain();
+      g.gain.value = 0.0001; s.connect(g); g.connect(actx.destination);
+      s.start(); s.stop(actx.currentTime + 0.02);
+    } catch(e){}
+    const now = Date.now();
+    session.live = true; session.paused = false; session.ending = false;
+    session.totalMs = settings.minutes * 60000;
+    session.startAt = now; session.endAt = now + session.totalMs;
+    session.breaths = 0;
+    beginBreath(now, true);
+    el('pauseBtn').textContent = 'Pause';
+    el('controlsRow').classList.remove('show');
+    clearTimeout(controlsHideTimer);
+    enterFullscreen();
+    el('session').classList.add('active');
+    resize();
+    acquireWakeLock();
+    keisu(1, 0, 0.8);
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(frame);
+  }
+
+  function beginBreath(at, first){
+    const frac = (at - session.startAt) / session.totalMs;
+    const t = breathTimes(frac);
+    session.breathStart = at; session.inS = t.inS; session.outS = t.outS; session.phase = 'in';
+    if (!first && Date.now() - at < 1000) turnTone(true);
+  }
+
+  // Where the breath is right now: returns {p, phase} with p the fill of the
+  // lungs, 0 (empty) to 1 (full), eased so the turns are gentle.
+  function breathState(now){
+    const e = (now - session.breathStart) / 1000;
+    const inS = session.inS, outS = session.outS;
+    if (e < inS) return { p: ease(e / inS), phase:'in' };
+    if (e < inS + outS) return { p: 1 - ease((e - inS) / outS), phase:'out' };
+    return { p: 0, phase:'done' };
+  }
+  const ease = t => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
+
+  function advance(now){
+    if (session.paused || session.ending) return;
+    // Each new breath begins exactly where the last one ended, never at the
+    // frame that happened to notice; a long gap (screen off) is walked through
+    // breath by breath so the count and the training ramp stay honest.
+    for (let guard = 0; guard < 10000; guard++){
+      const e = (now - session.breathStart) / 1000;
+      if (session.phase === 'in' && e >= session.inS){
+        session.phase = 'out';
+        if (e < session.inS + 1) turnTone(false);   // only cue a turn we're actually at
+      }
+      if (e < session.inS + session.outS) return;
+      session.breaths++;
+      const boundary = session.breathStart + (session.inS + session.outS) * 1000;
+      // The session ends on a completed exhalation: once the planned time is
+      // spent, the breath in progress finishes, then the bell.
+      if (boundary >= session.endAt){ endSession(); return; }
+      beginBreath(boundary, false);
+    }
+  }
+
+  function endSession(){
+    session.ending = true; session.endStart = Date.now();
+    releaseWakeLock();
+    keisu(2, 2.6, 0.9);
+    // Let the last frame rest, then fade to the closing.
+    setTimeout(finish, 2600);
+  }
+
+  function finish(){
+    session.live = false;
+    cancelAnimationFrame(raf); raf = null;
+    const mins = Math.round((Math.min(session.endStart, session.endAt) - session.startAt) / 60000);
+    const n = session.breaths;
+    const r = currentRhythm();
+    const when = mins < 1 ? 'under a minute' : `${mins} ${mins===1?'minute':'minutes'}`;
+    el('summary').innerHTML = `${n} ${n===1?'breath':'breaths'} · ${r.name.toLowerCase()}<br>${when}`;
+    el('session').classList.remove('active');
+    show('closing');
+    el('summary').classList.remove('show'); el('closeReturn').classList.remove('show');
+    setTimeout(()=> el('summary').classList.add('show'), 300);
+    setTimeout(()=> el('closeReturn').classList.add('show'), 1800);
+  }
+
+  function endEarly(){
+    if (!session.live || session.ending) return;
+    if (session.paused) togglePause();
+    session.endAt = Date.now();
+    endSession();
+  }
+
+  function togglePause(){
+    if (!session.live || session.ending) return;
+    session.paused = !session.paused;
+    const now = Date.now();
+    if (session.paused){
+      session.pausedAt = now;
+      clearTimeout(controlsHideTimer);
+    } else {
+      // Shift every deadline forward by the time spent paused.
+      const gap = now - session.pausedAt;
+      session.breathStart += gap; session.startAt += gap; session.endAt += gap;
+      scheduleControlsHide();
+    }
+    el('pauseBtn').textContent = session.paused ? 'Resume' : 'Pause';
+  }
+
+  // ---------- Drawing ----------
+  const canvas = el('breathCanvas');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', ()=> setTimeout(resize, 200));
+
+  function frame(){
+    if (!session.live) return;
+    const now = Date.now();
+    advance(now);
+    const st = session.paused ? breathState(session.pausedAt) : breathState(now);
+    // During the ending settle, the breath rests empty and the glow fades.
+    let fade = 1;
+    if (session.ending) fade = Math.max(0, 1 - (now - session.endStart) / 2400);
+    draw(st.p, fade, now);
+    raf = requestAnimationFrame(frame);
+  }
+
+  function draw(p, fade, now){
+    // ground
+    const g = ctx.createRadialGradient(W/2, H*0.45, 10, W/2, H*0.5, Math.max(W, H) * 0.8);
+    g.addColorStop(0, '#241b10'); g.addColorStop(1, '#120d07');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    if (settings.display === 'orb') drawOrb(p, fade);
+    else drawBubble(p, fade, now);
+  }
+
+  // The bubble: rises along a vertical guide as you breathe in, sinks as you
+  // breathe out. The guide is faint; the bubble carries the light.
+  function drawBubble(p, fade, now){
+    const cx = W / 2;
+    const top = H * 0.16, bot = H * 0.84;
+    const r = Math.min(W, H) * 0.075;
+    const y = bot - (bot - top) * p;
+    // the guide
+    ctx.strokeStyle = `rgba(205,189,157,${0.16 * fade})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx, top + r * 1.35); ctx.lineTo(cx, bot - r * 1.35); ctx.stroke();
+    [top, bot].forEach(yy=>{
+      ctx.beginPath(); ctx.arc(cx, yy, r * 1.35, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.stroke();
+    });
+    // glow: fuller as the breath fills
+    const glowR = r * (2.6 + 1.6 * p);
+    const glow = ctx.createRadialGradient(cx, y, r * 0.4, cx, y, glowR);
+    glow.addColorStop(0, `rgba(240,168,96,${(0.22 + 0.18 * p) * fade})`);
+    glow.addColorStop(1, 'rgba(240,168,96,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - glowR, y - glowR, glowR * 2, glowR * 2);
+    // the bubble itself
+    const body = ctx.createRadialGradient(cx - r * 0.3, y - r * 0.35, r * 0.1, cx, y, r);
+    body.addColorStop(0, `rgba(251,243,226,${0.95 * fade})`);
+    body.addColorStop(0.55, `rgba(240,168,96,${0.85 * fade})`);
+    body.addColorStop(1, `rgba(212,136,74,${0.7 * fade})`);
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.arc(cx, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // The orb: a circle that swells on the inhalation and shrinks on the exhalation.
+  function drawOrb(p, fade){
+    const cx = W / 2, cy = H / 2;
+    const rMin = Math.min(W, H) * 0.12, rMax = Math.min(W, H) * 0.36;
+    const r = rMin + (rMax - rMin) * p;
+    // outer bound, faint, to show the full breath
+    ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, rMax, 0, Math.PI * 2); ctx.stroke();
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 1.9);
+    glow.addColorStop(0, `rgba(240,168,96,${(0.20 + 0.15 * p) * fade})`);
+    glow.addColorStop(1, 'rgba(240,168,96,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4);
+    const body = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    body.addColorStop(0, `rgba(240,168,96,${0.28 * fade})`);
+    body.addColorStop(0.7, `rgba(217,139,74,${0.10 * fade})`);
+    body.addColorStop(1, 'rgba(217,139,74,0)');
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = `rgba(240,168,96,${0.85 * fade})`; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // ---------- Screens ----------
+  const screens = { home: el('home'), closing: el('closing') };
+  function show(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+
+  // ---------- Home rendering ----------
+  function chip(label, on, onClick, sub){
+    const b = document.createElement('button');
+    b.textContent = label;
+    if (sub){ const s = document.createElement('small'); s.textContent = sub; b.appendChild(s); }
+    if (on) b.classList.add('on');
+    b.onclick = onClick;
+    return b;
+  }
+  function renderHome(){
+    const rrow = el('rhythmRow'); rrow.innerHTML = '';
+    RHYTHMS.forEach(r=>{
+      const sub = (r.k === 'train' || r.k === 'custom') ? '' : `${r.inS}·${r.outS}`;
+      rrow.appendChild(chip(r.name, settings.rhythm === r.k, ()=>{ settings.rhythm = r.k; saveSettings(); renderHome(); }, sub));
+    });
+    const r = currentRhythm();
+    el('rhythmDesc').textContent = r.k === 'custom'
+      ? `${settings.inS} seconds in, ${settings.outS} seconds out. ${(60 / (settings.inS + settings.outS)).toFixed(1).replace(/\.0$/,'')} breaths a minute.`
+      : r.desc;
+    el('customRow').classList.toggle('show', r.k === 'custom');
+    el('inVal').textContent = settings.inS; el('outVal').textContent = settings.outS;
+
+    const lrow = el('lengthRow'); lrow.innerHTML = '';
+    LENGTHS.forEach(m=> lrow.appendChild(chip(`${m} min`, settings.minutes === m, ()=>{ settings.minutes = m; saveSettings(); renderHome(); })));
+
+    const orow = el('optionRow'); orow.innerHTML = '';
+    orow.appendChild(chip(settings.sound ? 'sound on' : 'sound off', settings.sound, ()=>{ settings.sound = !settings.sound; saveSettings(); renderHome(); }));
+    orow.appendChild(chip('bubble', settings.display === 'bubble', ()=>{ settings.display = 'bubble'; saveSettings(); renderHome(); }));
+    orow.appendChild(chip('orb', settings.display === 'orb', ()=>{ settings.display = 'orb'; saveSettings(); renderHome(); }));
+
+    el('sideNote').textContent = fullscreenSupported()
+      ? 'The screen clears completely while you breathe. Double-tap to pause or end.'
+      : 'Held sideways, the clock and battery fall away and only the breath remains. Double-tap to pause or end.';
+  }
+  function step(key, d){
+    settings[key] = Math.min(8, Math.max(3, settings[key] + d));
+    saveSettings(); renderHome();
+  }
+  el('inMinus').onclick = ()=> step('inS', -1);  el('inPlus').onclick = ()=> step('inS', 1);
+  el('outMinus').onclick = ()=> step('outS', -1); el('outPlus').onclick = ()=> step('outS', 1);
+
+  // ---------- Wiring ----------
+  el('beginBtn').onclick = startSession;
+  el('pauseBtn').onclick = togglePause;
+  el('endBtn').onclick = endEarly;
+  el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
+  el('sittingLink').onclick = ()=>{ location.href = './'; };
+
+  // Controls are summoned by a double-tap and retire after a few seconds,
+  // unless paused, when they stay so Resume remains within reach. A single tap
+  // does nothing: the screen is for the breath alone.
+  let controlsHideTimer = null, tapTimer = null;
+  function scheduleControlsHide(){
+    clearTimeout(controlsHideTimer);
+    controlsHideTimer = setTimeout(()=>{ el('controlsRow').classList.remove('show'); }, 4000);
+  }
+  el('session').addEventListener('click', (e)=>{
+    if (e.target.closest('button')) return;
+    if (tapTimer){
+      clearTimeout(tapTimer); tapTimer = null;
+      el('controlsRow').classList.add('show');
+      clearTimeout(controlsHideTimer);
+      if (!session.paused) scheduleControlsHide();
+      return;
+    }
+    tapTimer = setTimeout(()=>{ tapTimer = null; }, 300);
+  });
+
+  // Coming back from the background: resume audio, retake the wake lock, and
+  // let the wall clock catch the breath up at once.
+  document.addEventListener('visibilitychange', ()=>{
+    if (document.visibilityState === 'visible'){
+      if (actx && actx.state === 'suspended') actx.resume();
+      if (session.live && !session.ending){
+        acquireWakeLock();
+        if (!raf) raf = requestAnimationFrame(frame);
+      }
+    }
+  });
+
+  // init
+  try { el('versionMark').textContent = 'v' + APP_VERSION; } catch(e){}
+  loadSettings();
+  renderHome();
+})();
+</script>
+</body>
+</html>

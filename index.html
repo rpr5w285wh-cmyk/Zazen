@@ -250,6 +250,7 @@
     <div class="ghost-row">
       <button class="ghost-link" id="logLink">the record</button>
       <button class="ghost-link" id="settingsLink">settings</button>
+      <button class="ghost-link" id="breatheLink">breathing</button>
     </div>
     <div class="test-banner disp-hidden" id="testBanner">testing mode — sittings will not be recorded</div>
   </section>
@@ -414,7 +415,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '36';
+  const APP_VERSION = '37';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -2012,6 +2013,9 @@
   };
   el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
+  // The breathing practice (cardiac coherence) is its own page, sharing this
+  // app's cache; it can also be installed on its own from that page.
+  el('breatheLink').onclick = ()=>{ location.href = 'breathe.html'; };
   el('settingsReturn').onclick = ()=>{ renderHome(); show('home'); };
   el('testToggle').onclick = ()=>{
     testingMode = !testingMode;
