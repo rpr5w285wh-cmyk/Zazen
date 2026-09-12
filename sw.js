@@ -5,7 +5,10 @@
 const VERSION = new URL(location).searchParams.get('v') || '0';
 const CACHE = 'zazen-v' + VERSION;
 const ASSETS = ['./', './index.html', './manifest.json', './icon.svg',
-  './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
+  './apple-touch-icon.png', './icon-192.png', './icon-512.png',
+  // the breathing app shares this worker and cache
+  './breathe.html', './breathe.webmanifest', './breathe-icon.svg',
+  './breathe-apple-touch-icon.png', './breathe-icon-192.png', './breathe-icon-512.png'];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
@@ -19,8 +22,9 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const path = new URL(e.request.url).pathname;
   const isPage = e.request.mode === 'navigate'
-    || new URL(e.request.url).pathname.endsWith('/index.html');
+    || path.endsWith('/index.html') || path.endsWith('/breathe.html');
   if (isPage) {
     // Network-first for the page itself, so a new deploy is picked up on the
     // very next open. Cache-first here would pin the old page forever: the
