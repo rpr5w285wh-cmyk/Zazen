@@ -26,6 +26,7 @@
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; overflow: hidden; }
   body {
     background: var(--bg-deep);
@@ -47,53 +48,75 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
-  .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; height: 100dvh; padding: 28px 22px; display: flex; flex-direction: column; align-items: center; }
+  .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.7s ease; }
   .screen.active { display: flex; }
-  #home.active { max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Home and detail can exceed the viewport; they scroll inside the stage. */
+  #home.active, #detail.active { max-height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
   @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-  /* ---- Home ---- */
+  /* ---- Type ---- */
   .title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.5em; font-size: 1.05rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 4px; padding-left: 0.5em; }
-  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3.4rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 26px; text-shadow: 0 0 40px var(--glow); }
-  .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 26px; max-width: 320px; text-wrap: balance; min-height: 3.2em; }
-  .row-label { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 4px; }
-
+  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 18px; text-shadow: 0 0 40px var(--glow); }
+  .row-label { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; margin: 6px 0 4px; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+
+  /* ---- Chips (filters, lengths, options) ---- */
+  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px; margin-bottom: 14px; max-width: 380px; }
+  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 4px; transition: color 0.4s; border-bottom: 1px solid transparent; }
+  .adjust button:hover { color: var(--ink-dim); }
+  .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
+
+  /* ---- Cards ---- */
+  .cards { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-top: 6px; margin-bottom: 18px; }
+  .card { width: 100%; text-align: left; padding: 13px 14px 12px; border: 1px solid var(--line); border-radius: 3px; background: rgba(205,189,157,0.035); transition: background 0.4s, border-color 0.4s; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto; column-gap: 12px; }
+  .card:hover, .card:active { background: rgba(217,139,74,0.08); border-color: var(--ember-soft); }
+  .card .name { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 400; color: var(--ink); line-height: 1.2; grid-column: 1; }
+  .card .benefit { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 3px; grid-column: 1; }
+  .card .pattern { color: var(--ink-dim); font-size: 0.9rem; font-style: italic; margin-top: 5px; letter-spacing: 0.02em; grid-column: 1; }
+  .card .badge { grid-column: 2; grid-row: 1 / span 3; align-self: start; }
+  .badge { display: inline-block; color: var(--ink-faint); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 2px; padding: 4px 6px; white-space: nowrap; }
+  .badge.studied { color: var(--ember); border-color: var(--ember-soft); }
+  .empty-note { color: var(--ink-faint); font-style: italic; font-size: 0.9rem; text-align: center; padding: 24px 0; }
+
+  /* ---- Detail ---- */
+  .d-name { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-weight: 300; color: var(--ink); text-align: center; line-height: 1.15; margin-top: 8px; }
+  .d-benefit { color: var(--ember); font-size: 0.74rem; letter-spacing: 0.24em; text-transform: uppercase; text-align: center; margin-top: 8px; }
+  .d-secondary { color: var(--ink-faint); font-size: 0.8rem; font-style: italic; text-align: center; margin-top: 4px; }
+  .d-pattern { color: var(--ink-dim); font-size: 1.05rem; font-style: italic; text-align: center; margin: 12px 0 8px; }
+  .d-badges { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; }
+  .d-fields { width: 100%; max-width: 360px; margin-bottom: 8px; }
+  .d-field { color: var(--ink-dim); font-size: 0.93rem; line-height: 1.55; margin-bottom: 10px; }
+  .d-field b { color: var(--ink-faint); font-weight: 400; font-style: italic; letter-spacing: 0.04em; }
+  .d-note { color: var(--ink-faint); font-size: 0.8rem; font-style: italic; text-align: center; line-height: 1.5; max-width: 320px; margin: 4px 0 14px; text-wrap: balance; }
+  .d-warn { color: var(--ember); font-size: 0.85rem; font-style: italic; text-align: center; margin: 0 0 14px; max-width: 320px; text-wrap: balance; }
+
+  /* Custom steppers and the resonance slider */
+  .steppers { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 0 0 16px; }
+  .stepper { display: flex; align-items: center; gap: 2px; color: var(--ink-dim); font-size: 0.9rem; font-style: italic; }
+  .stepper button { color: var(--ink-faint); font-size: 1.2rem; padding: 4px 9px; font-style: normal; }
+  .stepper button:hover { color: var(--ink-dim); }
+  .stepper b { color: var(--ink); font-weight: 400; font-style: normal; min-width: 1.6em; text-align: center; }
+  .slider-wrap { width: 100%; max-width: 300px; margin: 4px 0 16px; text-align: center; color: var(--ink-dim); font-style: italic; font-size: 0.92rem; }
+  .slider-wrap input { width: 100%; margin: 10px 0 6px; accent-color: var(--ember); }
+
   .begin {
     border: 1px solid var(--ember-soft); color: var(--ink);
     padding: 16px 54px; border-radius: 2px; font-size: 0.95rem; letter-spacing: 0.26em; text-transform: uppercase;
-    background: rgba(217,139,74,0.05); transition: all 0.5s ease; margin: 6px 0 26px;
+    background: rgba(217,139,74,0.05); transition: all 0.5s ease; margin: 6px 0 20px;
   }
   .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
 
-  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-bottom: 22px; max-width: 340px; }
-  .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
-  .adjust button:hover { color: var(--ink-dim); }
-  .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
-  .adjust button small { font-size: 0.72rem; letter-spacing: 0.05em; color: var(--ink-faint); margin-left: 4px; }
-
-  /* Custom rhythm steppers: only shown when the custom rhythm is chosen. */
-  .custom { display: none; gap: 30px; margin: -8px 0 22px; }
-  .custom.show { display: flex; }
-  .stepper { display: flex; align-items: center; gap: 4px; color: var(--ink-dim); font-size: 0.9rem; font-style: italic; }
-  .stepper button { color: var(--ink-faint); font-size: 1.2rem; padding: 4px 10px; font-style: normal; }
-  .stepper button:hover { color: var(--ink-dim); }
-  .stepper b { color: var(--ink); font-weight: 400; font-style: normal; min-width: 1.2em; text-align: center; }
-
   .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
   .ghost-link:hover { color: var(--ink-dim); }
-  .ghost-row { display: flex; gap: 24px; align-items: center; }
-  .side-note { margin-top: 14px; color: var(--ink-faint); font-size: 0.8rem; font-style: italic; text-align: center; line-height: 1.6; max-width: 300px; text-wrap: balance; }
-  .version { color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 14px; }
+  .ghost-row { display: flex; gap: 24px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .side-note { margin-top: 10px; color: var(--ink-faint); font-size: 0.78rem; font-style: italic; text-align: center; line-height: 1.6; max-width: 320px; text-wrap: balance; }
+  .version { color: var(--ink-faint); opacity: 0.5; font-size: 0.7rem; letter-spacing: 0.15em; margin-top: 12px; }
 
   /* ---- Session: the bare screen. Nothing but the canvas. ---- */
   #session { position: fixed; inset: 0; z-index: 5; display: none; background: var(--bg-deep); }
   #session.active { display: block; animation: fade 1.2s ease; }
   #breathCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  /* Controls stay out of sight; a double-tap summons them and they slip away
-     again if left untouched (or stay while paused). Positioned within the safe
-     area so they clear the home indicator. */
   .controls {
     position: absolute; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom));
     display: flex; gap: 28px; align-items: center; justify-content: center;
@@ -104,16 +127,15 @@
   .controls button:hover { color: var(--ink-dim); }
 
   /* ---- Closing ---- */
-  #closing.active { min-height: calc(100dvh - 56px); justify-content: center; }
+  #closing.active { flex: 1; justify-content: center; }
   .summary { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.5rem; line-height: 1.5; color: var(--ink-dim); text-align: center; text-wrap: balance; margin-bottom: 28px; opacity: 0; transition: opacity 1.6s ease; }
   .summary.show { opacity: 1; }
   #closeReturn { opacity: 0; transition: opacity 1s ease; pointer-events: none; }
   #closeReturn.show { opacity: 1; pointer-events: auto; }
 
   @media (orientation: landscape) and (max-height: 520px) {
-    .stage { padding: 12px 28px; }
-    .kanji { margin-bottom: 12px; font-size: 2.6rem; }
-    .stage-desc { margin-bottom: 14px; min-height: 0; }
+    .stage { padding: 12px 22px; }
+    .kanji { margin-bottom: 8px; font-size: 2.2rem; }
   }
 </style>
 </head>
@@ -123,31 +145,47 @@
 
 <div class="stage">
 
-  <!-- HOME -->
+  <!-- HOME: the benefit picker -->
   <section class="screen active" id="home">
     <div class="title">Breathing</div>
     <div class="kanji">呼吸</div>
-    <div class="stage-desc" id="rhythmDesc"></div>
-
-    <div class="row-label">rhythm</div>
-    <div class="adjust" id="rhythmRow"></div>
-    <div class="custom" id="customRow">
-      <div class="stepper">in <button id="inMinus">−</button><b id="inVal">5</b><button id="inPlus">+</button>s</div>
-      <div class="stepper">out <button id="outMinus">−</button><b id="outVal">5</b><button id="outPlus">+</button>s</div>
-    </div>
-
-    <div class="row-label">minutes</div>
-    <div class="adjust" id="lengthRow"></div>
-
-    <div class="adjust" id="optionRow" style="margin-bottom:18px;"></div>
-
-    <button class="begin" id="beginBtn">Begin</button>
-
+    <div class="adjust" id="filterRow"></div>
+    <div class="cards" id="cards"></div>
     <div class="ghost-row">
       <button class="ghost-link" id="sittingLink">just sitting</button>
     </div>
-    <div class="side-note" id="sideNote"></div>
+    <div class="side-note">Not a substitute for medical care. With heart, lung or pregnancy concerns, check with a clinician before long holds.</div>
     <div class="version" id="versionMark"></div>
+  </section>
+
+  <!-- DETAIL: one technique -->
+  <section class="screen" id="detail">
+    <div class="d-name" id="dName"></div>
+    <div class="d-benefit" id="dBenefit"></div>
+    <div class="d-secondary" id="dSecondary"></div>
+    <div class="d-pattern" id="dPattern"></div>
+    <div class="d-badges" id="dBadges"></div>
+    <div class="d-fields" id="dFields"></div>
+    <div class="d-note">Not while driving or in water.</div>
+    <div class="d-warn" id="dWarn" hidden>First time with a long hold: stop and breathe normally if you feel dizzy.</div>
+    <div class="steppers" id="steppers" hidden>
+      <div class="stepper">in <button data-k="in" data-d="-1">−</button><b id="stIn"></b><button data-k="in" data-d="1">+</button></div>
+      <div class="stepper">hold <button data-k="hold" data-d="-1">−</button><b id="stHold"></b><button data-k="hold" data-d="1">+</button></div>
+      <div class="stepper">out <button data-k="out" data-d="-1">−</button><b id="stOut"></b><button data-k="out" data-d="1">+</button></div>
+      <div class="stepper">hold <button data-k="rest" data-d="-1">−</button><b id="stRest"></b><button data-k="rest" data-d="1">+</button></div>
+    </div>
+    <div class="slider-wrap" id="sliderWrap" hidden>
+      <div id="rateText"></div>
+      <input type="range" id="rateSlider" min="4.5" max="6.5" step="0.5">
+    </div>
+    <div class="adjust" id="variantRow" hidden></div>
+    <div class="row-label" id="lengthLabel">minutes</div>
+    <div class="adjust" id="lengthRow"></div>
+    <div class="adjust" id="optionRow"></div>
+    <button class="begin" id="beginBtn">Begin</button>
+    <div class="ghost-row">
+      <button class="ghost-link" id="detailBack">back</button>
+    </div>
   </section>
 
   <!-- CLOSING -->
@@ -171,66 +209,211 @@
 (function(){
   "use strict";
 
-  // Shares the service worker (and its version) with the sitting app, so a
-  // bump there refreshes this page too. Keep in step with index.html.
-  const APP_VERSION = '37';
+  // Shares the service worker (and its version) with the sitting app. Keep in
+  // step with index.html.
+  const APP_VERSION = '38';
   const el = id => document.getElementById(id);
 
-  // ---------- PWA glue ----------
   try {
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).catch(()=>{});
     }
   } catch(e){}
 
-  // ---------- Rhythms ----------
-  // Cardiac coherence: six breaths a minute, ten seconds a breath. The split
-  // between in and out sets the tone. Training starts quicker and eases down
-  // to the balanced rhythm over the session, for those new to slow breathing.
-  const RHYTHMS = [
-    { k:'calm',    name:'Calming',    inS:4, outS:6,
-      desc:'Four seconds in, six seconds out. The longer exhalation settles the body. Six breaths a minute.' },
-    { k:'balance', name:'Balanced',   inS:5, outS:5,
-      desc:'Five seconds in, five seconds out. Even and steady. Six breaths a minute.' },
-    { k:'energy',  name:'Energizing', inS:6, outS:4,
-      desc:'Six seconds in, four seconds out. The longer inhalation lifts. Six breaths a minute.' },
-    { k:'train',   name:'Training',   inS:5, outS:5,
-      desc:'Begins at a quicker pace and slows, breath by breath, to five in and five out by the end.' },
-    { k:'custom',  name:'Custom',     inS:5, outS:5,
-      desc:'Set your own count, three to eight seconds each way.' },
+  // ---------- Benefits ----------
+  const BENEFITS = [
+    { k:'sleep',      name:'Sleep',                 chip:'sleep' },
+    { k:'calm',       name:'Calm anxiety or panic', chip:'calm' },
+    { k:'focus',      name:'Focus under pressure',  chip:'focus' },
+    { k:'resilience', name:'Stress resilience',     chip:'resilience' },
+    { k:'mood',       name:'Mood',                  chip:'mood' },
+    { k:'settle',     name:'Settle and centre',     chip:'settle' },
+    { k:'start',      name:'Getting started',       chip:'getting started' },
   ];
-  const LENGTHS = [3, 5, 10, 15, 20];
-  const TRAIN_START = 3.5;   // training mode: seconds each way at the start
+  const benefitName = k => (BENEFITS.find(b=>b.k===k) || {name:''}).name;
+
+  // ---------- Techniques ----------
+  // Phase types: in (inhale), top (the second, short inhale of a sigh),
+  // hold (after the inhale), out (exhale), rest (hold after the exhale).
+  // Seconds may be halves. `len` is the default session length and unit.
+  const P = (t, s) => ({ t, s });
+  const TECHNIQUES = [
+    { id:'478', name:'4-7-8', primary:'sleep', secondary:['calm'],
+      phases:[P('in',4), P('hold',7), P('out',8)], len:{unit:'cycles', value:4}, evidence:'Traditional', type:'established',
+      origin:'Popularised by Dr Andrew Weil (Arizona Center for Integrative Medicine), who describes it as adapted from yogic pranayama. His guidance: no more than four breaths per sitting for the first month, up to eight after that.',
+      purpose:'Falling asleep and calming acute anxiety.',
+      howto:'Inhale through the nose for 4, hold for 7, exhale through the mouth for 8.',
+      caution:'The long hold can cause lightheadedness; start with 4 cycles.' },
+    { id:'711', name:'7-11', primary:'calm', secondary:['sleep'],
+      phases:[P('in',7), P('out',11)], len:{unit:'min', value:3}, evidence:'Clinical use', type:'established',
+      origin:'Named and taught by the UK Human Givens Institute, which calls it the most effective calming technique it teaches; the long-exhale ratio itself is old.',
+      purpose:'Interrupting panic by keeping the exhale much longer than the inhale.',
+      howto:'Inhale for 7, exhale for 11, breathing from the belly. If that feels strained, use Beginner (3 in, 5 out) instead.',
+      caution:'' },
+    { id:'sigh', name:'Cyclic sighing', primary:'mood', secondary:['calm'],
+      phases:[P('in',2), P('top',1), P('out',6)], len:{unit:'min', value:5}, evidence:'Studied', type:'established',
+      origin:'The brainstem circuit for the physiological sigh was identified by Jack Feldman\'s and Mark Krasnow\'s labs (Nature, 2016). A 2023 Stanford randomised study (Balban, Spiegel, Huberman and others, Cell Reports Medicine) compared three 5-minute daily breathing practices with mindfulness meditation over a month; cyclic sighing gave the largest gain in positive mood and the largest drop in breathing rate.',
+      purpose:'A daily mood lift and fast stress relief.',
+      howto:'A full inhale through the nose, a short second inhale to top up, then a long slow exhale through the mouth. The seconds here are this app\'s pacing; the study fixed none.',
+      caution:'' },
+    { id:'box', name:'Box breathing', primary:'focus', secondary:['calm'],
+      phases:[P('in',4), P('hold',4), P('out',4), P('rest',4)], len:{unit:'min', value:4}, evidence:'Clinical use', type:'established',
+      origin:'Popularised by retired Navy SEAL commander Mark Divine from 2012; Lt Col Dave Grossman teaches the same 4 · 4 · 4 · 4 count to police and military as combat or tactical breathing. The equal-count pattern matches sama vritti in pranayama.',
+      purpose:'Staying calm and alert before or during high-pressure moments.',
+      howto:'Inhale 4, hold 4, exhale 4, hold empty 4.',
+      caution:'Shorten to 3 · 3 · 3 · 3 (use Custom) if the holds feel uncomfortable.' },
+    { id:'coherent', name:'Coherent breathing', primary:'resilience', secondary:['calm'],
+      phases:[P('in',6), P('out',6)], len:{unit:'min', value:10}, evidence:'Studied', type:'established',
+      origin:'Coined and trademarked by Stephen Elliott (Coherence LLC, 2005) in The New Science of Breath: five breaths a minute, 6 seconds in and 6 out, building on heart-rate-variability research.',
+      purpose:'Daily practice to raise heart-rate variability and lower baseline stress.',
+      howto:'Inhale 6, exhale 6, smooth and continuous, no holds.',
+      caution:'Try Balance first if 6 · 6 feels too slow.' },
+    { id:'resonance', name:'Resonance', primary:'resilience', secondary:['focus'], rate:true,
+      phases:[], len:{unit:'min', value:10}, evidence:'Studied', type:'established',
+      origin:'HRV biofeedback work by Paul Lehrer and Evgeny Vaschillo. Their protocol tests 6.5 down to 4.5 breaths a minute in half steps; most people\'s resonance falls between 4.5 and 7, averaging near 5.5. A 2014 study (Lin and others) found 5.5 breaths a minute with equal in and out gave the highest HRV.',
+      purpose:'Finding the individual rate that most raises heart-rate variability.',
+      howto:'Set the rate with the slider, 4.5 to 6.5 breaths a minute. Try a rate for a few minutes and keep the one that feels most settled.',
+      caution:'Without a heart-rate sensor the choice is by feel, not measurement.' },
+    { id:'nadi', name:'Nadi Shodhana', primary:'settle', secondary:['focus'], sides:true,
+      phases:[P('in',4), P('hold',4), P('out',8)], len:{unit:'min', value:5}, evidence:'Traditional', type:'established',
+      origin:'Classical hatha yoga pranayama (alternate-nostril breathing). 4 · 4 · 8 is the 1:1:2 beginner ratio; the classical 1:4:2 ratio is for guided practice only.',
+      purpose:'Settling the mind and improving concentration.',
+      howto:'Close the right nostril, inhale left; close both, hold; release the right, exhale. The next breath starts on the right. The bubble drifts to the side in use, and the tone sounds from that side.',
+      caution:'Skip if the nose is blocked.' },
+    { id:'triangle', name:'Triangle', primary:'start', secondary:['focus'], variants:[3,4],
+      phases:[P('in',3), P('hold',3), P('out',3)], len:{unit:'min', value:3}, evidence:'Traditional', type:'established',
+      origin:'A common variant in yoga and mindfulness teaching.',
+      purpose:'An easy step between Beginner and Box breathing.',
+      howto:'Inhale, hold and exhale in equal counts, 3 or 4.',
+      caution:'' },
+    { id:'soothe', name:'Soothe', primary:'calm', secondary:['sleep'],
+      phases:[P('in',4), P('out',8)], len:{unit:'min', value:3}, evidence:'Clinical use', type:'adapted',
+      origin:'Adapted from a reference app\'s calming session: 4 in, 8 out, the same 1:2 long-exhale ratio as 7-11.',
+      purpose:'Settling quickly when 7-11 feels too long.',
+      howto:'Inhale through the nose for 4, exhale slowly for 8.',
+      caution:'' },
+    { id:'balance', name:'Balance', primary:'resilience', secondary:['focus'],
+      phases:[P('in',5), P('out',5)], len:{unit:'min', value:5}, evidence:'Studied', type:'adapted',
+      origin:'Adapted from a reference app\'s cardiac-coherence session: 5 in, 5 out, six breaths a minute, the rate most HRV-biofeedback studies use.',
+      purpose:'An even daily rhythm to build stress resilience.',
+      howto:'Inhale 5, exhale 5, smooth, no holds.',
+      caution:'' },
+    { id:'beginner', name:'Beginner', primary:'start', secondary:['calm'],
+      phases:[P('in',3), P('out',5)], len:{unit:'min', value:3}, evidence:'Clinical use', type:'adapted',
+      origin:'Adapted from a reference app\'s starter session. 3 in, 5 out is also the Human Givens Institute\'s own short form of 7-11.',
+      purpose:'An easy first long-exhale pattern.',
+      howto:'Inhale 3, exhale 5. Move to 7-11 when this feels easy.',
+      caution:'' },
+    // The three RespiRelax-style rhythms this app began with, kept so nothing
+    // already in use disappears. No evidence badge: they are presets, not
+    // techniques with a literature of their own.
+    { id:'calming', name:'Calming', primary:'resilience', secondary:['calm'],
+      phases:[P('in',4), P('out',6)], len:{unit:'min', value:5}, evidence:'', type:'adapted',
+      origin:'A cardiac-coherence preset: 4 in, 6 out, six breaths a minute with the longer exhale.',
+      purpose:'Coherence pacing that leans toward settling.',
+      howto:'Inhale 4, exhale 6, no holds.',
+      caution:'' },
+    { id:'energizing', name:'Energizing', primary:'focus', secondary:['resilience'],
+      phases:[P('in',6), P('out',4)], len:{unit:'min', value:5}, evidence:'', type:'adapted',
+      origin:'A cardiac-coherence preset: 6 in, 4 out, six breaths a minute with the longer inhale.',
+      purpose:'Coherence pacing that leans toward lift.',
+      howto:'Inhale 6, exhale 4, no holds.',
+      caution:'' },
+    { id:'training', name:'Training', primary:'start', secondary:['resilience'], ramp:true,
+      phases:[P('in',3.5), P('out',3.5)], len:{unit:'min', value:10}, evidence:'', type:'adapted',
+      origin:'A ramp that starts at 3.5 seconds each way and slows, breath by breath, to 5 and 5 by the end of the session.',
+      purpose:'Reaching six breaths a minute comfortably.',
+      howto:'Follow the bubble; the pace eases as the minutes pass. Counted in minutes only.',
+      caution:'' },
+    { id:'custom', name:'Custom', primary:'', secondary:[], custom:true,
+      phases:[], len:{unit:'min', value:5}, evidence:'', type:'',
+      origin:'', purpose:'Build your own pattern from the same four phases: in, hold, out, hold.', howto:'', caution:'' },
+  ];
+  const techById = id => TECHNIQUES.find(t=>t.id===id);
+  const TRAIN_START = 3.5, TRAIN_END = 5;
 
   // ---------- Settings (persisted) ----------
-  const SET_KEY = 'breathe.settings.v1';
-  const settings = { rhythm:'balance', minutes:5, inS:5, outS:5, sound:true, display:'bubble' };
+  const SET_KEY = 'breathe.settings.v2', OLD_KEY = 'breathe.settings.v1';
+  const settings = {
+    sound:true, display:'bubble', filter:'all',
+    recents:[], lengths:{}, holdSeen:[],
+    custom:{ in:4, hold:4, out:6, rest:0 }, rate:5.5, triangle:3,
+  };
   function sGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
   function sSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
   function loadSettings(){
+    try {   // carry over sound and display from the first version
+      const o = JSON.parse(sGet(OLD_KEY) || '{}');
+      if (typeof o.sound === 'boolean') settings.sound = o.sound;
+      if (o.display === 'bubble' || o.display === 'orb') settings.display = o.display;
+    } catch(e){}
     try {
       const s = JSON.parse(sGet(SET_KEY) || '{}');
-      if (RHYTHMS.some(r=>r.k===s.rhythm)) settings.rhythm = s.rhythm;
-      if (LENGTHS.includes(s.minutes)) settings.minutes = s.minutes;
-      if (Number.isInteger(s.inS) && s.inS>=3 && s.inS<=8) settings.inS = s.inS;
-      if (Number.isInteger(s.outS) && s.outS>=3 && s.outS<=8) settings.outS = s.outS;
       if (typeof s.sound === 'boolean') settings.sound = s.sound;
       if (s.display === 'bubble' || s.display === 'orb') settings.display = s.display;
+      if (s.filter === 'all' || BENEFITS.some(b=>b.k===s.filter)) settings.filter = s.filter;
+      if (Array.isArray(s.recents)) settings.recents = s.recents.filter(id=>techById(id));
+      if (s.lengths && typeof s.lengths === 'object') settings.lengths = s.lengths;
+      if (Array.isArray(s.holdSeen)) settings.holdSeen = s.holdSeen;
+      if (s.custom) ['in','hold','out','rest'].forEach(k=>{ if (typeof s.custom[k]==='number') settings.custom[k] = s.custom[k]; });
+      if (typeof s.rate === 'number' && s.rate >= 4.5 && s.rate <= 6.5) settings.rate = s.rate;
+      if (s.triangle === 3 || s.triangle === 4) settings.triangle = s.triangle;
     } catch(e){}
   }
   function saveSettings(){ sSet(SET_KEY, JSON.stringify(settings)); }
 
-  function currentRhythm(){ return RHYTHMS.find(r=>r.k===settings.rhythm) || RHYTHMS[1]; }
-  // Seconds in and out for a breath that begins at `frac` (0..1) of the session.
-  function breathTimes(frac){
-    const r = currentRhythm();
-    if (r.k === 'custom') return { inS: settings.inS, outS: settings.outS };
-    if (r.k === 'train'){
-      const s = TRAIN_START + (5 - TRAIN_START) * Math.min(1, Math.max(0, frac));
-      return { inS: s, outS: s };
+  // ---------- Resolving a technique's phases for a given breath ----------
+  const CUSTOM_LIMITS = { in:[2,10], hold:[0,10], out:[2,12], rest:[0,10] };
+  // frac: how far through the session (0..1) this breath begins; only the
+  // training ramp uses it.
+  function phasesFor(t, frac){
+    if (t.custom){
+      const c = settings.custom, out = [P('in', c.in)];
+      if (c.hold > 0) out.push(P('hold', c.hold));
+      out.push(P('out', c.out));
+      if (c.rest > 0) out.push(P('rest', c.rest));
+      return out;
     }
-    return { inS: r.inS, outS: r.outS };
+    if (t.rate){
+      const cycle = 60 / settings.rate;
+      const inS = Math.round(cycle * 0.45 * 10) / 10;   // exhale slightly longer
+      return [P('in', inS), P('out', Math.round((cycle - inS) * 10) / 10)];
+    }
+    if (t.ramp){
+      const s = TRAIN_START + (TRAIN_END - TRAIN_START) * Math.min(1, Math.max(0, frac || 0));
+      return [P('in', s), P('out', s)];
+    }
+    if (t.variants){
+      const n = settings.triangle;
+      return t.phases.map(p => P(p.t, n));
+    }
+    return t.phases;
   }
+  function fmtSec(s){ return Number.isInteger(s) ? String(s) : s.toFixed(1); }
+  const PHASE_WORD = { in:'in', top:'top-up', hold:'hold', out:'out', rest:'hold' };
+  // "4 in · 7 hold · 8 out" — a 3-part and a 4-part pattern read differently.
+  function patternText(t){
+    if (t.rate) return `${settings.rate} breaths a minute`;
+    if (t.ramp) return `${fmtSec(TRAIN_START)} to ${TRAIN_END} each way`;
+    const ph = phasesFor(t, 0);
+    const parts = [];
+    for (let i = 0; i < ph.length; i++){
+      const p = ph[i];
+      if (p.t === 'in' && ph[i+1] && ph[i+1].t === 'top'){ parts.push(`${fmtSec(p.s)}+${fmtSec(ph[i+1].s)} in`); i++; continue; }
+      parts.push(`${fmtSec(p.s)} ${PHASE_WORD[p.t]}`);
+    }
+    if (t.sides) parts.push('alternate sides');
+    return parts.join(' · ');
+  }
+  function longestHold(t){
+    return Math.max(0, ...phasesFor(t, 0).filter(p=>p.t==='hold'||p.t==='rest').map(p=>p.s));
+  }
+  function lengthFor(t){
+    const saved = settings.lengths[t.id];
+    if (saved && (saved.unit === 'min' || saved.unit === 'cycles') && saved.value > 0) return saved;
+    return { unit: t.len.unit, value: t.len.value };
+  }
+  const LENGTH_CHOICES = { min:[3, 5, 10, 15, 20], cycles:[4, 8, 12, 20] };
 
   // ---------- Audio (WebAudio, no files) ----------
   let actx = null;
@@ -239,24 +422,28 @@
     if (actx.state === 'suspended') actx.resume();
     return actx;
   }
-  // A soft cue at each turn of the breath: a little higher as the inhalation
-  // begins, a little lower as the exhalation begins. Brief, so it marks the
-  // turn without filling the silence.
-  function turnTone(inhale){
+  // One soft cue at each turn of the breath. Each phase has its own pitch so
+  // an inhale, its top-up, a hold and an exhale are told apart with eyes
+  // closed. `pan` (-1 left .. 1 right) carries the alternate-nostril side.
+  const CUE = { in:[528, 0.5, 1.2], top:[704, 0.32, 0.5], hold:[440, 0.16, 0.9], out:[396, 0.5, 1.2], rest:[330, 0.14, 0.9] };
+  function cue(type, pan){
     if (!settings.sound) return;
     try {
       ensureAudio();
+      const [f0, level, decay] = CUE[type] || CUE.in;
       const t = actx.currentTime;
-      const f0 = inhale ? 528 : 396;
-      const out = actx.createGain(); out.gain.value = 0.35; out.connect(actx.destination);
-      [[1, 0.5, 1.2], [2.01, 0.12, 0.7], [3.0, 0.05, 0.4]].forEach(([ratio, lvl, decay])=>{
+      const out = actx.createGain(); out.gain.value = 0.35 * level / 0.5;
+      let dest = actx.destination;
+      if (pan && actx.createStereoPanner){ const sp = actx.createStereoPanner(); sp.pan.value = pan; sp.connect(actx.destination); dest = sp; }
+      out.connect(dest);
+      [[1, 0.5, decay], [2.01, 0.12, decay * 0.6], [3.0, 0.05, decay * 0.35]].forEach(([ratio, lvl, d])=>{
         const o = actx.createOscillator(); const g = actx.createGain();
         o.type = 'sine'; o.frequency.value = f0 * ratio;
         g.gain.setValueAtTime(0.0001, t);
         g.gain.exponentialRampToValueAtTime(lvl, t + 0.04);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + d);
         o.connect(g); g.connect(out);
-        o.start(t); o.stop(t + decay + 0.05);
+        o.start(t); o.stop(t + d + 0.05);
       });
     } catch(e){}
   }
@@ -295,10 +482,7 @@
     } catch(e){}
   }
 
-  // ---------- Fullscreen: hide the status bar for the whole session ----------
-  // Entered on Begin (a user gesture, as the API requires). iPhones have no
-  // Fullscreen API for pages; there, holding the phone sideways is what hides
-  // the clock and battery, so the home screen says so.
+  // ---------- Fullscreen ----------
   function fullscreenSupported(){
     const root = document.documentElement;
     return !!(root.requestFullscreen || root.webkitRequestFullscreen);
@@ -318,16 +502,13 @@
     } catch(e){}
   }
 
-  // ---------- Wake lock: keep the screen on ----------
+  // ---------- Wake lock ----------
   let wakeLock = null, keepAwakeVideo = null;
   async function acquireWakeLock(){
     let ok = false;
     try { if ('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); ok = true; } } catch(e){}
     if (!ok) enableVideoKeepAwake();
   }
-  // Fallback: a muted inline video streamed from the very canvas we draw on.
-  // Active video playback holds the screen awake where the Wake Lock API is
-  // missing; if a platform promotes it to a native player, it shows the scene.
   function enableVideoKeepAwake(){
     try {
       if (!keepAwakeVideo){
@@ -352,20 +533,20 @@
     } catch(e){}
   }
 
-  // ---------- Session state ----------
-  // Wall-clock driven, so a throttled tab or dimmed screen never drifts the
-  // rhythm. Each breath is measured from its own start; training mode picks
-  // fresh in/out lengths as each breath begins.
+  // ---------- Session engine ----------
+  // Wall-clock driven. Each breath is measured from its own start and begins
+  // exactly where the last one ended; a long gap (screen off) is walked
+  // through breath by breath so the count and the training ramp stay honest.
   const session = {
-    live:false, paused:false,
+    live:false, paused:false, tech:null, len:null,
     startAt:0, endAt:0, totalMs:0,
-    breathStart:0, inS:5, outS:5, phase:'in',   // 'in' | 'out'
+    breathStart:0, phases:[], phaseIdx:0,
     breaths:0, pausedAt:0,
-    ending:false, endStart:0,                     // the settle after the last breath
+    ending:false, endStart:0,
   };
   let raf = null;
 
-  function startSession(){
+  function startSession(t){
     ensureAudio();
     try {   // unlock audio on this gesture (iOS)
       const s = actx.createOscillator(); const g = actx.createGain();
@@ -374,10 +555,20 @@
     } catch(e){}
     const now = Date.now();
     session.live = true; session.paused = false; session.ending = false;
-    session.totalMs = settings.minutes * 60000;
-    session.startAt = now; session.endAt = now + session.totalMs;
+    session.tech = t; session.len = lengthFor(t);
     session.breaths = 0;
+    session.startAt = now;
+    if (session.len.unit === 'min'){
+      session.totalMs = session.len.value * 60000;
+    } else {
+      // an estimate for the training ramp only; cycles decide the end
+      session.totalMs = session.len.value * phasesFor(t, 0).reduce((a,p)=>a+p.s, 0) * 1000;
+    }
+    session.endAt = now + session.totalMs;
     beginBreath(now, true);
+    // remember the technique so it sorts first next time
+    settings.recents = [t.id].concat(settings.recents.filter(id=>id!==t.id)).slice(0, 5);
+    saveSettings();
     el('pauseBtn').textContent = 'Pause';
     el('controlsRow').classList.remove('show');
     clearTimeout(controlsHideTimer);
@@ -391,40 +582,43 @@
   }
 
   function beginBreath(at, first){
-    const frac = (at - session.startAt) / session.totalMs;
-    const t = breathTimes(frac);
-    session.breathStart = at; session.inS = t.inS; session.outS = t.outS; session.phase = 'in';
-    if (!first && Date.now() - at < 1000) turnTone(true);
+    const frac = session.totalMs ? (at - session.startAt) / session.totalMs : 0;
+    session.phases = phasesFor(session.tech, frac);
+    session.breathStart = at; session.phaseIdx = 0;
+    if (!first && Date.now() - at < 1000) cue('in', sidePan('in'));
   }
-
-  // Where the breath is right now: returns {p, phase} with p the fill of the
-  // lungs, 0 (empty) to 1 (full), eased so the turns are gentle.
-  function breathState(now){
-    const e = (now - session.breathStart) / 1000;
-    const inS = session.inS, outS = session.outS;
-    if (e < inS) return { p: ease(e / inS), phase:'in' };
-    if (e < inS + outS) return { p: 1 - ease((e - inS) / outS), phase:'out' };
-    return { p: 0, phase:'done' };
+  const cycleSec = () => session.phases.reduce((a,p)=>a+p.s, 0);
+  // Alternate-nostril side for the current breath: even breaths inhale left
+  // and exhale right, odd breaths the reverse. -1 = left, 1 = right.
+  function sidePan(phaseType){
+    if (!session.tech || !session.tech.sides) return 0;
+    const inhaleSide = session.breaths % 2 === 0 ? -1 : 1;
+    return (phaseType === 'out' || phaseType === 'rest') ? -inhaleSide : inhaleSide;
   }
-  const ease = t => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
 
   function advance(now){
     if (session.paused || session.ending) return;
-    // Each new breath begins exactly where the last one ended, never at the
-    // frame that happened to notice; a long gap (screen off) is walked through
-    // breath by breath so the count and the training ramp stay honest.
     for (let guard = 0; guard < 10000; guard++){
       const e = (now - session.breathStart) / 1000;
-      if (session.phase === 'in' && e >= session.inS){
-        session.phase = 'out';
-        if (e < session.inS + 1) turnTone(false);   // only cue a turn we're actually at
+      // step through phases whose time has passed, cueing the turn we are at
+      let acc = 0;
+      for (let i = 0; i < session.phases.length; i++){
+        acc += session.phases[i].s;
+        if (e < acc){
+          if (i !== session.phaseIdx){
+            session.phaseIdx = i;
+            if (e - (acc - session.phases[i].s) < 1) cue(session.phases[i].t, sidePan(session.phases[i].t));
+          }
+          return;
+        }
       }
-      if (e < session.inS + session.outS) return;
+      // the breath is complete
       session.breaths++;
-      const boundary = session.breathStart + (session.inS + session.outS) * 1000;
-      // The session ends on a completed exhalation: once the planned time is
-      // spent, the breath in progress finishes, then the bell.
-      if (boundary >= session.endAt){ endSession(); return; }
+      const boundary = session.breathStart + cycleSec() * 1000;
+      const done = session.len.unit === 'cycles'
+        ? session.breaths >= session.len.value
+        : boundary >= session.endAt;   // the breath in progress finishes, then the bell
+      if (done){ endSession(); return; }
       beginBreath(boundary, false);
     }
   }
@@ -433,18 +627,17 @@
     session.ending = true; session.endStart = Date.now();
     releaseWakeLock();
     keisu(2, 2.6, 0.9);
-    // Let the last frame rest, then fade to the closing.
     setTimeout(finish, 2600);
   }
 
   function finish(){
     session.live = false;
     cancelAnimationFrame(raf); raf = null;
-    const mins = Math.round((Math.min(session.endStart, session.endAt) - session.startAt) / 60000);
+    const ms = session.endStart - session.startAt;
+    const mins = Math.round(ms / 60000);
     const n = session.breaths;
-    const r = currentRhythm();
     const when = mins < 1 ? 'under a minute' : `${mins} ${mins===1?'minute':'minutes'}`;
-    el('summary').innerHTML = `${n} ${n===1?'breath':'breaths'} · ${r.name.toLowerCase()}<br>${when}`;
+    el('summary').innerHTML = `${n} ${n===1?'breath':'breaths'} · ${session.tech.name.toLowerCase()}<br>${when}`;
     el('session').classList.remove('active');
     show('closing');
     el('summary').classList.remove('show'); el('closeReturn').classList.remove('show');
@@ -455,7 +648,6 @@
   function endEarly(){
     if (!session.live || session.ending) return;
     if (session.paused) togglePause();
-    session.endAt = Date.now();
     endSession();
   }
 
@@ -467,12 +659,56 @@
       session.pausedAt = now;
       clearTimeout(controlsHideTimer);
     } else {
-      // Shift every deadline forward by the time spent paused.
       const gap = now - session.pausedAt;
       session.breathStart += gap; session.startAt += gap; session.endAt += gap;
       scheduleControlsHide();
     }
     el('pauseBtn').textContent = session.paused ? 'Resume' : 'Pause';
+  }
+
+  // Where the breath is right now: p = fill of the lungs, 0 (empty) to 1
+  // (full), eased so the turns are gentle; x = sideways drift for the
+  // alternate-nostril cue, -1 (left) to 1 (right); phase = the phase type.
+  const ease = t => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
+  function breathState(now){
+    const e = (now - session.breathStart) / 1000;
+    const ph = session.phases;
+    const hasTop = ph.some(p=>p.t==='top');
+    const inTop = hasTop ? 0.72 : 1;      // where the first inhale segment ends
+    let acc = 0, p = 0, type = 'rest';
+    for (let i = 0; i < ph.length; i++){
+      const seg = ph[i], start = acc; acc += seg.s;
+      if (e < acc || i === ph.length - 1){
+        const f = Math.min(1, (e - start) / seg.s);
+        type = seg.t;
+        if (seg.t === 'in') p = ease(f) * inTop;
+        else if (seg.t === 'top') p = inTop + ease(f) * (1 - inTop);
+        else if (seg.t === 'hold') p = 1;
+        else if (seg.t === 'out') p = 1 - ease(f);
+        else p = 0;
+        if (e >= acc) { p = 0; type = 'rest'; }   // past the end: rest empty
+        break;
+      }
+    }
+    // sideways drift: rise on the inhale side, cross during the hold (or at
+    // the top of the inhale when there is no hold), descend on the other side
+    let x = 0;
+    if (session.tech && session.tech.sides){
+      const inSide = sidePan('in'), outSide = -inSide;
+      let acc2 = 0;
+      for (let i = 0; i < ph.length; i++){
+        const seg = ph[i], start = acc2; acc2 += seg.s;
+        if (e < acc2){
+          const f = Math.min(1, (e - start) / seg.s);
+          if (seg.t === 'in' || seg.t === 'top') x = ph.some(q=>q.t==='hold') ? inSide : (f < 0.85 ? inSide : inSide + (outSide - inSide) * ease((f - 0.85) / 0.15));
+          else if (seg.t === 'hold') x = inSide + (outSide - inSide) * ease(f);
+          else x = outSide;
+          break;
+        }
+        if (i === ph.length - 1) x = outSide;
+      }
+    }
+    return { p, x, type };
   }
 
   // ---------- Drawing ----------
@@ -492,47 +728,46 @@
     if (!session.live) return;
     const now = Date.now();
     advance(now);
-    const st = session.paused ? breathState(session.pausedAt) : breathState(now);
-    // During the ending settle, the breath rests empty and the glow fades.
+    const st = breathState(session.paused ? session.pausedAt : now);
     let fade = 1;
     if (session.ending) fade = Math.max(0, 1 - (now - session.endStart) / 2400);
-    draw(st.p, fade, now);
+    draw(st, fade, now);
     raf = requestAnimationFrame(frame);
   }
 
-  function draw(p, fade, now){
-    // ground
+  function draw(st, fade, now){
     const g = ctx.createRadialGradient(W/2, H*0.45, 10, W/2, H*0.5, Math.max(W, H) * 0.8);
     g.addColorStop(0, '#241b10'); g.addColorStop(1, '#120d07');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-    if (settings.display === 'orb') drawOrb(p, fade);
-    else drawBubble(p, fade, now);
+    // a slow shimmer while holding, so a still bubble still reads as alive
+    const holding = st.type === 'hold' || st.type === 'rest';
+    const pulse = holding ? 0.5 + 0.5 * Math.sin(now / 900) : 0;
+    if (settings.display === 'orb') drawOrb(st, fade, pulse);
+    else drawBubble(st, fade, pulse);
   }
 
-  // The bubble: rises along a vertical guide as you breathe in, sinks as you
-  // breathe out. The guide is faint; the bubble carries the light.
-  function drawBubble(p, fade, now){
-    const cx = W / 2;
+  // The bubble rises along a vertical guide as you breathe in, rests at the
+  // top through a hold, sinks as you breathe out, rests at the bottom through
+  // a hold after. For alternate-nostril breathing it drifts to the side in use.
+  function drawBubble(st, fade, pulse){
+    const cx = W / 2 + st.x * W * 0.14;
     const top = H * 0.16, bot = H * 0.84;
     const r = Math.min(W, H) * 0.075;
-    const y = bot - (bot - top) * p;
-    // the guide
+    const y = bot - (bot - top) * st.p;
+    const guideX = W / 2;
     ctx.strokeStyle = `rgba(205,189,157,${0.16 * fade})`;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(cx, top + r * 1.35); ctx.lineTo(cx, bot - r * 1.35); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(guideX, top + r * 1.35); ctx.lineTo(guideX, bot - r * 1.35); ctx.stroke();
     [top, bot].forEach(yy=>{
-      ctx.beginPath(); ctx.arc(cx, yy, r * 1.35, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(guideX, yy, r * 1.35, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.stroke();
     });
-    // glow: fuller as the breath fills
-    const glowR = r * (2.6 + 1.6 * p);
+    const glowR = r * (2.6 + 1.6 * st.p + 0.4 * pulse);
     const glow = ctx.createRadialGradient(cx, y, r * 0.4, cx, y, glowR);
-    glow.addColorStop(0, `rgba(240,168,96,${(0.22 + 0.18 * p) * fade})`);
+    glow.addColorStop(0, `rgba(240,168,96,${(0.22 + 0.18 * st.p + 0.08 * pulse) * fade})`);
     glow.addColorStop(1, 'rgba(240,168,96,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(cx - glowR, y - glowR, glowR * 2, glowR * 2);
-    // the bubble itself
     const body = ctx.createRadialGradient(cx - r * 0.3, y - r * 0.35, r * 0.1, cx, y, r);
     body.addColorStop(0, `rgba(251,243,226,${0.95 * fade})`);
     body.addColorStop(0.55, `rgba(240,168,96,${0.85 * fade})`);
@@ -541,19 +776,18 @@
     ctx.beginPath(); ctx.arc(cx, y, r, 0, Math.PI * 2); ctx.fill();
   }
 
-  // The orb: a circle that swells on the inhalation and shrinks on the exhalation.
-  function drawOrb(p, fade){
-    const cx = W / 2, cy = H / 2;
+  // The orb swells on the inhale, holds, shrinks on the exhale, holds.
+  function drawOrb(st, fade, pulse){
+    const cx = W / 2 + st.x * W * 0.14, cy = H / 2;
     const rMin = Math.min(W, H) * 0.12, rMax = Math.min(W, H) * 0.36;
-    const r = rMin + (rMax - rMin) * p;
-    // outer bound, faint, to show the full breath
+    const r = rMin + (rMax - rMin) * st.p;
     ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, rMax, 0, Math.PI * 2); ctx.stroke();
-    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 1.9);
-    glow.addColorStop(0, `rgba(240,168,96,${(0.20 + 0.15 * p) * fade})`);
+    ctx.beginPath(); ctx.arc(W / 2, cy, rMax, 0, Math.PI * 2); ctx.stroke();
+    const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (1.9 + 0.3 * pulse));
+    glow.addColorStop(0, `rgba(240,168,96,${(0.20 + 0.15 * st.p + 0.08 * pulse) * fade})`);
     glow.addColorStop(1, 'rgba(240,168,96,0)');
     ctx.fillStyle = glow;
-    ctx.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4);
+    ctx.fillRect(cx - r * 2.5, cy - r * 2.5, r * 5, r * 5);
     const body = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
     body.addColorStop(0, `rgba(240,168,96,${0.28 * fade})`);
     body.addColorStop(0.7, `rgba(217,139,74,${0.10 * fade})`);
@@ -565,60 +799,141 @@
   }
 
   // ---------- Screens ----------
-  const screens = { home: el('home'), closing: el('closing') };
-  function show(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
+  const screens = { home: el('home'), detail: el('detail'), closing: el('closing') };
+  function show(name){ Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); screens[name].scrollTop = 0; }
 
-  // ---------- Home rendering ----------
-  function chip(label, on, onClick, sub){
+  function chip(label, on, onClick){
     const b = document.createElement('button');
     b.textContent = label;
-    if (sub){ const s = document.createElement('small'); s.textContent = sub; b.appendChild(s); }
     if (on) b.classList.add('on');
     b.onclick = onClick;
     return b;
   }
+
+  // ---------- Home: the benefit picker ----------
   function renderHome(){
-    const rrow = el('rhythmRow'); rrow.innerHTML = '';
-    RHYTHMS.forEach(r=>{
-      const sub = (r.k === 'train' || r.k === 'custom') ? '' : `${r.inS}·${r.outS}`;
-      rrow.appendChild(chip(r.name, settings.rhythm === r.k, ()=>{ settings.rhythm = r.k; saveSettings(); renderHome(); }, sub));
+    const frow = el('filterRow'); frow.innerHTML = '';
+    frow.appendChild(chip('all', settings.filter === 'all', ()=>{ settings.filter = 'all'; saveSettings(); renderHome(); }));
+    BENEFITS.forEach(b=> frow.appendChild(chip(b.chip, settings.filter === b.k, ()=>{ settings.filter = b.k; saveSettings(); renderHome(); })));
+
+    // All: recent sessions first, then catalogue order. A benefit: primary
+    // matches first, then secondary.
+    let list;
+    if (settings.filter === 'all'){
+      const recent = settings.recents.map(techById).filter(Boolean);
+      list = recent.concat(TECHNIQUES.filter(t=>!settings.recents.includes(t.id)));
+    } else {
+      const k = settings.filter;
+      list = TECHNIQUES.filter(t=>t.primary===k).concat(TECHNIQUES.filter(t=>t.secondary.includes(k)));
+    }
+    const cards = el('cards'); cards.innerHTML = '';
+    list.forEach(t=>{
+      const c = document.createElement('button');
+      c.className = 'card';
+      const name = document.createElement('div'); name.className = 'name'; name.textContent = t.name;
+      const ben = document.createElement('div'); ben.className = 'benefit';
+      ben.textContent = t.custom ? 'your own pattern' : benefitName(t.primary);
+      const pat = document.createElement('div'); pat.className = 'pattern'; pat.textContent = patternText(t);
+      c.appendChild(name); c.appendChild(ben); c.appendChild(pat);
+      if (t.evidence){ const bd = document.createElement('span'); bd.className = 'badge' + (t.evidence === 'Studied' ? ' studied' : ''); bd.textContent = t.evidence; c.appendChild(bd); }
+      c.onclick = ()=> openDetail(t);
+      cards.appendChild(c);
     });
-    const r = currentRhythm();
-    el('rhythmDesc').textContent = r.k === 'custom'
-      ? `${settings.inS} seconds in, ${settings.outS} seconds out. ${(60 / (settings.inS + settings.outS)).toFixed(1).replace(/\.0$/,'')} breaths a minute.`
-      : r.desc;
-    el('customRow').classList.toggle('show', r.k === 'custom');
-    el('inVal').textContent = settings.inS; el('outVal').textContent = settings.outS;
+  }
 
+  // ---------- Detail ----------
+  let current = null;
+  function openDetail(t){
+    current = t;
+    renderDetail();
+    show('detail');
+  }
+  function renderDetail(){
+    const t = current;
+    el('dName').textContent = t.name;
+    el('dBenefit').textContent = t.custom ? 'your own pattern' : benefitName(t.primary);
+    el('dSecondary').textContent = t.secondary.length ? 'also for: ' + t.secondary.map(benefitName).join(', ').toLowerCase() : '';
+    el('dPattern').textContent = patternText(t);
+    const badges = el('dBadges'); badges.innerHTML = '';
+    if (t.evidence){ const b = document.createElement('span'); b.className = 'badge' + (t.evidence === 'Studied' ? ' studied' : ''); b.textContent = t.evidence; badges.appendChild(b); }
+    if (t.type === 'adapted'){ const b = document.createElement('span'); b.className = 'badge'; b.textContent = 'adapted'; badges.appendChild(b); }
+    const fields = el('dFields'); fields.innerHTML = '';
+    [['Origin', t.origin], ['Purpose', t.purpose], ['How', t.howto], ['Caution', t.caution]].forEach(([k, v])=>{
+      if (!v) return;
+      const d = document.createElement('div'); d.className = 'd-field';
+      const b = document.createElement('b'); b.textContent = k + ' · ';
+      d.appendChild(b); d.appendChild(document.createTextNode(v));
+      fields.appendChild(d);
+    });
+    // First time with a hold of 7 s or more: a one-line warning, once.
+    el('dWarn').hidden = !(longestHold(t) >= 7 && !settings.holdSeen.includes(t.id));
+
+    // custom steppers
+    el('steppers').hidden = !t.custom;
+    if (t.custom){
+      el('stIn').textContent = fmtSec(settings.custom.in);
+      el('stHold').textContent = fmtSec(settings.custom.hold);
+      el('stOut').textContent = fmtSec(settings.custom.out);
+      el('stRest').textContent = fmtSec(settings.custom.rest);
+    }
+    // resonance slider
+    el('sliderWrap').hidden = !t.rate;
+    if (t.rate){
+      el('rateSlider').value = settings.rate;
+      const ph = phasesFor(t, 0);
+      el('rateText').textContent = `${settings.rate} breaths a minute · ${fmtSec(ph[0].s)} in · ${fmtSec(ph[1].s)} out`;
+    }
+    // triangle count
+    const vrow = el('variantRow'); vrow.hidden = !t.variants; vrow.innerHTML = '';
+    if (t.variants) t.variants.forEach(n=> vrow.appendChild(chip(`${n} counts`, settings.triangle === n, ()=>{ settings.triangle = n; saveSettings(); renderDetail(); })));
+
+    // length: the technique's unit, switchable
+    const len = lengthFor(t);
+    const unit = t.ramp ? 'min' : len.unit;   // the ramp needs minutes
+    el('lengthLabel').textContent = unit === 'min' ? 'minutes' : 'breaths';
     const lrow = el('lengthRow'); lrow.innerHTML = '';
-    LENGTHS.forEach(m=> lrow.appendChild(chip(`${m} min`, settings.minutes === m, ()=>{ settings.minutes = m; saveSettings(); renderHome(); })));
-
+    LENGTH_CHOICES[unit].forEach(v=> lrow.appendChild(chip(unit === 'min' ? `${v} min` : `${v}`, len.value === v && len.unit === unit, ()=>{
+      settings.lengths[t.id] = { unit, value: v }; saveSettings(); renderDetail();
+    })));
+    if (!t.ramp){
+      const other = unit === 'min' ? 'cycles' : 'min';
+      lrow.appendChild(chip(other === 'min' ? 'by minutes' : 'by breaths', false, ()=>{
+        settings.lengths[t.id] = { unit: other, value: LENGTH_CHOICES[other][1] }; saveSettings(); renderDetail();
+      }));
+    }
     const orow = el('optionRow'); orow.innerHTML = '';
-    orow.appendChild(chip(settings.sound ? 'sound on' : 'sound off', settings.sound, ()=>{ settings.sound = !settings.sound; saveSettings(); renderHome(); }));
-    orow.appendChild(chip('bubble', settings.display === 'bubble', ()=>{ settings.display = 'bubble'; saveSettings(); renderHome(); }));
-    orow.appendChild(chip('orb', settings.display === 'orb', ()=>{ settings.display = 'orb'; saveSettings(); renderHome(); }));
-
-    el('sideNote').textContent = fullscreenSupported()
-      ? 'The screen clears completely while you breathe. Double-tap to pause or end.'
-      : 'Held sideways, the clock and battery fall away and only the breath remains. Double-tap to pause or end.';
+    orow.appendChild(chip(settings.sound ? 'sound on' : 'sound off', settings.sound, ()=>{ settings.sound = !settings.sound; saveSettings(); renderDetail(); }));
+    orow.appendChild(chip('bubble', settings.display === 'bubble', ()=>{ settings.display = 'bubble'; saveSettings(); renderDetail(); }));
+    orow.appendChild(chip('orb', settings.display === 'orb', ()=>{ settings.display = 'orb'; saveSettings(); renderDetail(); }));
   }
-  function step(key, d){
-    settings[key] = Math.min(8, Math.max(3, settings[key] + d));
-    saveSettings(); renderHome();
-  }
-  el('inMinus').onclick = ()=> step('inS', -1);  el('inPlus').onclick = ()=> step('inS', 1);
-  el('outMinus').onclick = ()=> step('outS', -1); el('outPlus').onclick = ()=> step('outS', 1);
+  el('steppers').addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if (!b) return;
+    const k = b.dataset.k, d = Number(b.dataset.d) * 0.5;
+    const [lo, hi] = CUSTOM_LIMITS[k];
+    settings.custom[k] = Math.min(hi, Math.max(lo, Math.round((settings.custom[k] + d) * 2) / 2));
+    saveSettings(); renderDetail();
+  });
+  el('rateSlider').addEventListener('input', ()=>{
+    settings.rate = Number(el('rateSlider').value);
+    saveSettings(); renderDetail();
+  });
 
   // ---------- Wiring ----------
-  el('beginBtn').onclick = startSession;
+  el('beginBtn').onclick = ()=>{
+    if (!current) return;
+    if (longestHold(current) >= 7 && !settings.holdSeen.includes(current.id)){ settings.holdSeen.push(current.id); saveSettings(); }
+    const len = lengthFor(current);
+    if (current.ramp && len.unit !== 'min'){ settings.lengths[current.id] = { unit:'min', value: current.len.value }; saveSettings(); }
+    startSession(current);
+  };
   el('pauseBtn').onclick = togglePause;
   el('endBtn').onclick = endEarly;
+  el('detailBack').onclick = ()=>{ renderHome(); show('home'); };
   el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
   el('sittingLink').onclick = ()=>{ location.href = './'; };
 
   // Controls are summoned by a double-tap and retire after a few seconds,
-  // unless paused, when they stay so Resume remains within reach. A single tap
-  // does nothing: the screen is for the breath alone.
+  // unless paused. A single tap does nothing: the screen is for the breath.
   let controlsHideTimer = null, tapTimer = null;
   function scheduleControlsHide(){
     clearTimeout(controlsHideTimer);
@@ -636,8 +951,6 @@
     tapTimer = setTimeout(()=>{ tapTimer = null; }, 300);
   });
 
-  // Coming back from the background: resume audio, retake the wake lock, and
-  // let the wall clock catch the breath up at once.
   document.addEventListener('visibilitychange', ()=>{
     if (document.visibilityState === 'visible'){
       if (actx && actx.state === 'suspended') actx.resume();
