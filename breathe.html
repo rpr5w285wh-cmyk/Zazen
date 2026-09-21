@@ -211,7 +211,7 @@
 
   // Shares the service worker (and its version) with the sitting app. Keep in
   // step with index.html.
-  const APP_VERSION = '38';
+  const APP_VERSION = '39';
   const el = id => document.getElementById(id);
 
   try {
@@ -542,7 +542,7 @@
     startAt:0, endAt:0, totalMs:0,
     breathStart:0, phases:[], phaseIdx:0,
     breaths:0, pausedAt:0,
-    ending:false, endStart:0,
+    ending:false, endStart:0, fadeMs:2400,
   };
   let raf = null;
 
@@ -623,11 +623,14 @@
     }
   }
 
-  function endSession(){
+  // A completed session closes with two strikes and a slow fade; an early
+  // End gets one soft strike and a quick fade, so the screen answers the tap.
+  function endSession(early){
     session.ending = true; session.endStart = Date.now();
+    session.fadeMs = early ? 650 : 2400;
     releaseWakeLock();
-    keisu(2, 2.6, 0.9);
-    setTimeout(finish, 2600);
+    if (early) keisu(1, 0, 0.6); else keisu(2, 2.6, 0.9);
+    setTimeout(finish, early ? 700 : 2600);
   }
 
   function finish(){
@@ -648,7 +651,7 @@
   function endEarly(){
     if (!session.live || session.ending) return;
     if (session.paused) togglePause();
-    endSession();
+    endSession(true);
   }
 
   function togglePause(){
@@ -670,11 +673,12 @@
   // (full), eased so the turns are gentle; x = sideways drift for the
   // alternate-nostril cue, -1 (left) to 1 (right); phase = the phase type.
   const ease = t => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, t)));
+  const SPLIT_AT = 0.72;   // lung fill where a split inhale's top-up begins
   function breathState(now){
     const e = (now - session.breathStart) / 1000;
     const ph = session.phases;
     const hasTop = ph.some(p=>p.t==='top');
-    const inTop = hasTop ? 0.72 : 1;      // where the first inhale segment ends
+    const inTop = hasTop ? SPLIT_AT : 1;  // where the first inhale segment ends
     let acc = 0, p = 0, type = 'rest';
     for (let i = 0; i < ph.length; i++){
       const seg = ph[i], start = acc; acc += seg.s;
@@ -730,7 +734,7 @@
     advance(now);
     const st = breathState(session.paused ? session.pausedAt : now);
     let fade = 1;
-    if (session.ending) fade = Math.max(0, 1 - (now - session.endStart) / 2400);
+    if (session.ending) fade = Math.max(0, 1 - (now - session.endStart) / (session.fadeMs || 2400));
     draw(st, fade, now);
     raf = requestAnimationFrame(frame);
   }
@@ -762,6 +766,13 @@
       ctx.beginPath(); ctx.arc(guideX, yy, r * 1.35, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.stroke();
     });
+    // Split inhale: a horizontal tick where the first inhale ends and the
+    // short top-up begins, so the two inhales read as two.
+    if (session.phases.some(p=>p.t==='top')){
+      const ty = bot - (bot - top) * SPLIT_AT;
+      ctx.strokeStyle = `rgba(205,189,157,${0.28 * fade})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(guideX - r * 1.1, ty); ctx.lineTo(guideX + r * 1.1, ty); ctx.stroke();
+    }
     const glowR = r * (2.6 + 1.6 * st.p + 0.4 * pulse);
     const glow = ctx.createRadialGradient(cx, y, r * 0.4, cx, y, glowR);
     glow.addColorStop(0, `rgba(240,168,96,${(0.22 + 0.18 * st.p + 0.08 * pulse) * fade})`);
@@ -783,6 +794,10 @@
     const r = rMin + (rMax - rMin) * st.p;
     ctx.strokeStyle = `rgba(205,189,157,${0.12 * fade})`; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(W / 2, cy, rMax, 0, Math.PI * 2); ctx.stroke();
+    if (session.phases.some(p=>p.t==='top')){
+      ctx.strokeStyle = `rgba(205,189,157,${0.22 * fade})`;
+      ctx.beginPath(); ctx.arc(W / 2, cy, rMin + (rMax - rMin) * SPLIT_AT, 0, Math.PI * 2); ctx.stroke();
+    }
     const glow = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * (1.9 + 0.3 * pulse));
     glow.addColorStop(0, `rgba(240,168,96,${(0.20 + 0.15 * st.p + 0.08 * pulse) * fade})`);
     glow.addColorStop(1, 'rgba(240,168,96,0)');
