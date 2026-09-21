@@ -27,19 +27,27 @@ or surviving a browser-data reset.
 
 ## Breathing
 
-`breathe.html` is a companion practice: paced breathing for cardiac
-coherence, in the manner of RespiRelax+. Choose a rhythm — calming (4 in, 6
-out), balanced (5·5), energizing (6·4), a training ramp that eases down to
-5·5, or a custom count of 3–8 seconds each way — and a length of 3 to 20
-minutes. A bubble rises as you breathe in and sinks as you breathe out (or an
-orb swells and shrinks); a soft tone marks each turn and a bell opens and
-closes the session.
+`breathe.html` is a companion practice: paced breathing, chosen by benefit.
+The home screen is a row of benefit filters (sleep, calm, focus, resilience,
+mood, settle, getting started); each technique card shows its benefit, its
+pattern in phase order (for example "4 in · 7 hold · 8 out") and an evidence
+badge (Studied, Clinical use, Traditional). A detail screen gives origin,
+purpose, how-to and caution before Begin.
 
-While you breathe the screen shows nothing else: no text, no timer, no
-controls. On platforms with a fullscreen API the status bar goes too. iPhones
-have no page fullscreen in portrait; held sideways, iOS hides the clock and
-battery for home-screen apps, and the page says so. A double-tap brings up
-pause and end; they fade again on their own.
+Techniques: 4-7-8, 7-11, cyclic sighing, box breathing, coherent breathing,
+resonance (a 4.5 to 6.5 breaths-a-minute slider), Nadi Shodhana, triangle,
+plus the adapted patterns Soothe 4·8, Balance 5·5 and Beginner 3·5, the
+cardiac-coherence presets Calming 4·6 and Energizing 6·4, a training ramp,
+and a custom builder with all four phases (in, hold, out, hold) in half-second
+steps. Sessions run by minutes or by breaths.
+
+While you breathe the screen shows nothing but the bubble (or an orb): no
+text, no timer, no controls. It rises on the inhale, rests through a hold,
+sinks on the exhale, and for alternate-nostril breathing drifts to the side in
+use, with the tone sounding from that side. On platforms with a fullscreen API
+the status bar goes too. iPhones have no page fullscreen in portrait; held
+sideways, iOS hides the clock and battery for home-screen apps. A double-tap
+brings up pause and end; they fade again on their own.
 
 It is reachable from the sitting app's home screen ("breathing") and can also
 be added to the home screen on its own, with its own icon, from `breathe.html`.
