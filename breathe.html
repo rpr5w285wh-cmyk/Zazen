@@ -211,7 +211,7 @@
 
   // Shares the service worker (and its version) with the sitting app. Keep in
   // step with index.html.
-  const APP_VERSION = '39';
+  const APP_VERSION = '40';
   const el = id => document.getElementById(id);
 
   try {
@@ -424,8 +424,9 @@
   }
   // One soft cue at each turn of the breath. Each phase has its own pitch so
   // an inhale, its top-up, a hold and an exhale are told apart with eyes
-  // closed. `pan` (-1 left .. 1 right) carries the alternate-nostril side.
-  const CUE = { in:[528, 0.5, 1.2], top:[704, 0.32, 0.5], hold:[440, 0.16, 0.9], out:[396, 0.5, 1.2], rest:[330, 0.14, 0.9] };
+  // closed: the inhale low, the exhale high, the top-up a step above the
+  // inhale. `pan` (-1 left .. 1 right) carries the alternate-nostril side.
+  const CUE = { in:[396, 0.5, 1.2], top:[470, 0.32, 0.5], hold:[440, 0.16, 0.9], out:[528, 0.5, 1.2], rest:[330, 0.14, 0.9] };
   function cue(type, pan){
     if (!settings.sound) return;
     try {
