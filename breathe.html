@@ -57,7 +57,8 @@
 
   /* ---- Type ---- */
   .title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.5em; font-size: 1.05rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 4px; padding-left: 0.5em; }
-  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 18px; text-shadow: 0 0 40px var(--glow); }
+  .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 4px; text-shadow: 0 0 40px var(--glow); }
+  .back-link { margin-bottom: 8px; }
   .row-label { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase; margin: 6px 0 4px; }
   button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 
@@ -149,11 +150,10 @@
   <section class="screen active" id="home">
     <div class="title">Breathing</div>
     <div class="kanji">呼吸</div>
+    <!-- Back to the sitting app, kept above the list so it shows without scrolling. -->
+    <button class="ghost-link back-link" id="sittingLink">← just sitting</button>
     <div class="adjust" id="filterRow"></div>
     <div class="cards" id="cards"></div>
-    <div class="ghost-row">
-      <button class="ghost-link" id="sittingLink">just sitting</button>
-    </div>
     <div class="side-note">Not a substitute for medical care. With heart, lung or pregnancy concerns, check with a clinician before long holds.</div>
     <div class="version" id="versionMark"></div>
   </section>
@@ -211,7 +211,7 @@
 
   // Shares the service worker (and its version) with the sitting app. Keep in
   // step with index.html.
-  const APP_VERSION = '40';
+  const APP_VERSION = '41';
   const el = id => document.getElementById(id);
 
   try {
