@@ -18,18 +18,18 @@ the kyōsaku.
 
 Time is shown as a ring, an hourglass, or a burning incense stick.
 
-## The record
+## Your data
 
-Every completed sitting is marked in the record — a 28-day grid with totals
-and the current streak. Data lives in `localStorage` on your device; nothing
-leaves it. Settings offers a copy-paste backup code for moving to a new phone
-or surviving a browser-data reset.
+Completed sittings are counted on the home screen. Data lives in
+`localStorage` on your device; nothing leaves it. Settings offers a
+copy-paste backup code for moving to a new phone or surviving a browser-data
+reset.
 
 ## Breathing
 
 `breathe.html` is a companion practice: paced breathing, chosen by benefit.
-The home screen is a row of benefit filters (sleep, calm, focus, resilience,
-mood, settle, getting started); each technique card shows its benefit, its
+The home screen is a row of benefit filters (sleep, waking up, calm, focus,
+resilience, mood, settle, getting started); each technique card shows its benefit, its
 pattern in phase order (for example "4 in · 7 hold · 8 out") and an evidence
 badge (Studied, Clinical use, Traditional). A detail screen gives origin,
 purpose, how-to and caution before Begin.
@@ -39,7 +39,7 @@ resonance (a 4.5 to 6.5 breaths-a-minute slider), Nadi Shodhana, triangle,
 plus the adapted patterns Soothe 4·8, Balance 5·5 and Beginner 3·5, the
 cardiac-coherence presets Calming 4·6 and Energizing 6·4, a training ramp,
 and a custom builder with all four phases (in, hold, out, hold) in half-second
-steps. Sessions run by minutes or by breaths.
+steps. Sessions run by minutes (1 to 20) or by breaths.
 
 While you breathe the screen shows nothing but the bubble (or an orb): no
 text, no timer, no controls. It rises on the inhale, rests through a hold,

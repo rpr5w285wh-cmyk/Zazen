@@ -28,6 +28,9 @@
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+  /* Larger type throughout: every size is in rem, so this one value scales
+     them all. Text columns below are widened in step. */
+  html { font-size: 118.75%; }
   html, body { height: 100%; overflow: hidden; }
 
   body {
@@ -59,7 +62,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
-  .stage { position: relative; z-index: 2; width: 100%; max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
+  .stage { position: relative; z-index: 2; width: 100%; max-width: 540px; padding: 28px; display: flex; flex-direction: column; align-items: center; }
 
   /* ---- Screens ---- */
   .screen { display: none; width: 100%; flex-direction: column; align-items: center; animation: fade 0.9s ease; }
@@ -74,11 +77,11 @@
   .title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.5em; font-size: 1.05rem; color: var(--ink-dim); text-transform: uppercase; margin-bottom: 4px; padding-left: 0.5em; }
   .kanji { font-family: 'Cormorant Garamond', serif; font-size: 3.4rem; font-weight: 300; color: var(--ink); letter-spacing: 0.1em; margin-bottom: 38px; text-shadow: 0 0 40px var(--glow); }
 
-  .stat-line { color: var(--ink-faint); font-size: 0.95rem; font-style: italic; letter-spacing: 0.04em; margin-bottom: 40px; text-align: center; line-height: 1.7; min-height: 1.4em; }
+  .stat-line { color: var(--ink-faint); font-size: 0.95rem; font-style: italic; letter-spacing: 0.04em; margin-bottom: 40px; text-align: center; line-height: 1.7; min-height: 1.4em; text-wrap: balance; }
   .stat-line b { color: var(--ink-dim); font-style: normal; font-weight: 400; }
 
   .stage-name { color: var(--ember); font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; margin-bottom: 6px; }
-  .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 36px; max-width: 320px; }
+  .stage-desc { color: var(--ink-dim); font-size: 0.95rem; font-style: italic; text-align: center; line-height: 1.6; margin-bottom: 36px; max-width: 380px; }
 
   .plan { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; margin-bottom: 34px; color: var(--ink-faint); font-size: 0.82rem; letter-spacing: 0.08em; }
   .plan .seg { color: var(--ink-dim); }
@@ -100,7 +103,7 @@
   }
   .begin:hover, .begin:active { background: rgba(217,139,74,0.13); box-shadow: 0 0 32px var(--glow); }
 
-  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 320px; }
+  .adjust { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px 22px; margin-bottom: 18px; max-width: 400px; }
   .adjust button { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.12em; padding: 8px 6px; transition: color 0.4s; border-bottom: 1px solid transparent; }
   .adjust button:hover { color: var(--ink-dim); }
   .adjust button.on { color: var(--ember); border-bottom-color: var(--ember-soft); }
@@ -108,8 +111,8 @@
   .ghost-link { color: var(--ink-faint); font-size: 0.8rem; letter-spacing: 0.1em; padding: 10px; transition: color 0.4s; font-style: italic; }
   .ghost-link:hover { color: var(--ink-dim); }
   .ghost-row { display: flex; gap: 24px; align-items: center; }
-  .test-banner { margin-top: 16px; color: var(--ember); font-size: 0.78rem; letter-spacing: 0.06em; font-style: italic; opacity: 0.9; text-align: center; max-width: 300px; }
-  .setting-block { width: 100%; max-width: 340px; margin-bottom: 30px; }
+  .test-banner { margin-top: 16px; color: var(--ember); font-size: 0.78rem; letter-spacing: 0.06em; font-style: italic; opacity: 0.9; text-align: center; max-width: 360px; }
+  .setting-block { width: 100%; max-width: 420px; margin-bottom: 30px; }
   .toggle-row { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 14px 0; border-bottom: 1px solid var(--line); color: var(--ink-dim); font-size: 0.95rem; }
   .tog-label { color: var(--ink-dim); font-size: 0.98rem; letter-spacing: 0.04em; }
   .tog-state { color: var(--ink-faint); font-style: italic; letter-spacing: 0.1em; }
@@ -122,7 +125,7 @@
 
   /* ---- Practice ---- */
   .phase-label { color: var(--ember); font-size: 0.8rem; letter-spacing: 0.32em; text-transform: uppercase; margin-bottom: 8px; height: 1.2em; transition: opacity 0.8s; }
-  .phase-guide { color: var(--ink-dim); font-size: 1rem; font-style: italic; text-align: center; text-wrap: balance; height: 3.6em; display: flex; align-items: flex-start; justify-content: center; line-height: 1.8; max-width: 320px; margin-bottom: 44px; transition: opacity 0.9s ease; will-change: opacity; transform: translateZ(0); }
+  .phase-guide { color: var(--ink-dim); font-size: 1rem; font-style: italic; text-align: center; text-wrap: balance; height: 3.6em; display: flex; align-items: flex-start; justify-content: center; line-height: 1.8; max-width: 400px; margin-bottom: 44px; transition: opacity 0.9s ease; will-change: opacity; transform: translateZ(0); }
   .phase-guide span { display: block; }
 
   .orb-wrap { position: relative; width: 240px; height: 240px; display: flex; align-items: center; justify-content: center; margin-bottom: 44px; }
@@ -189,7 +192,7 @@
   #cgPath, #cgDoorLeaf, #cgHorizon, .cg-edge { fill: none; stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 3px rgba(205,189,157,0.35)); opacity: 0.85; }
   .cg-emph { stroke: var(--ink-dim); stroke-width: 2; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 3px rgba(205,189,157,0.3)); }
   #cgDot { fill: var(--ember); filter: drop-shadow(0 0 6px var(--glow)); opacity: 0; }
-  .glyph-caption { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.6rem; line-height: 1.45; color: var(--ink-dim); text-align: center; max-width: 480px; margin: 4px auto 0; min-height: 3em; text-wrap: balance; transition: opacity 1s ease; }
+  .glyph-caption { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.6rem; line-height: 1.45; color: var(--ink-dim); text-align: center; max-width: 540px; margin: 4px auto 0; min-height: 3em; text-wrap: balance; transition: opacity 1s ease; }
   @keyframes glyphIn { from { opacity: 0; } to { opacity: 1; } }
   /* Phase B: the static stack of all four vows, revealed at the end. */
   .vow-final { font-family: 'Cormorant Garamond', serif; font-weight: 300; font-style: italic; font-size: 1.35rem; line-height: 1.5; color: var(--ink-dim); text-align: center; margin-bottom: 24px; display: none; }
@@ -205,12 +208,6 @@
 
   /* ---- Log ---- */
   .log-title { font-family: 'Cormorant Garamond', serif; font-weight: 300; letter-spacing: 0.3em; text-transform: uppercase; font-size: 1rem; color: var(--ink-dim); margin-bottom: 28px; }
-  .log-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; margin-bottom: 30px; width: 100%; max-width: 280px; }
-  .log-cell { aspect-ratio: 1; border-radius: 2px; background: rgba(154,141,117,0.06); transition: background 0.4s; }
-  .log-cell.lit { background: var(--ember-soft); box-shadow: 0 0 10px var(--glow); }
-  .log-cell.today { outline: 1px solid var(--ink-faint); }
-  .log-stats { color: var(--ink-dim); font-size: 0.95rem; text-align: center; line-height: 1.9; font-style: italic; margin-bottom: 32px; }
-  .log-stats b { color: var(--ink); font-style: normal; }
 
   .fade-slow { transition: opacity 1.5s ease; }
 
@@ -221,7 +218,13 @@
      that grow taller than the viewport scroll instead of clipping. */
   @media (orientation: landscape) and (max-height: 520px) {
     .stage { padding: 12px 28px; }
-    #home.active, #log.active { max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #home.active { max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    /* tighter home so Begin stays near the top at the larger type size */
+    .kanji { font-size: 2.4rem; margin-bottom: 10px; }
+    .stat-line { margin-bottom: 12px; }
+    .stage-desc { margin-bottom: 12px; }
+    .plan { margin-bottom: 12px; }
+    .begin { margin-bottom: 14px; }
     .phase-guide { margin-bottom: 4px; }
     .orb-wrap { margin-bottom: 0; }
     .skip-hint { margin-top: 6px; }
@@ -248,7 +251,6 @@
     <button class="begin" id="beginBtn">Begin</button>
     <div class="adjust" id="adjustRow"></div>
     <div class="ghost-row">
-      <button class="ghost-link" id="logLink">the record</button>
       <button class="ghost-link" id="settingsLink">settings</button>
       <button class="ghost-link" id="breatheLink">breathing</button>
     </div>
@@ -399,14 +401,6 @@
     <button class="ghost-link" id="closeReturn">return</button>
   </section>
 
-  <!-- LOG -->
-  <section class="screen" id="log">
-    <div class="log-title">The Record</div>
-    <div class="log-grid" id="logGrid"></div>
-    <div class="log-stats" id="logStats"></div>
-    <button class="ghost-link" id="logReturn">return</button>
-  </section>
-
 </div>
 
 <script>
@@ -415,7 +409,7 @@
 
   // Single source of truth for the version. Bump this one number on each update;
   // it drives both the on-screen marker and the service-worker cache name.
-  const APP_VERSION = '41';
+  const APP_VERSION = '42';
 
   // ---------- PWA glue: manifest + offline service worker ----------
   // If companion files (manifest.json, sw.js) are hosted alongside this page,
@@ -1253,7 +1247,7 @@
 
   // ---------- Elements ----------
   const el = id => document.getElementById(id);
-  const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), log: el('log'), settings: el('settings') };
+  const screens = { home: el('home'), practice: el('practice'), closing: el('closing'), settings: el('settings') };
   function show(name) { if(name!=='closing') stopCloseGlyph(); Object.values(screens).forEach(s=>s.classList.remove('active')); screens[name].classList.add('active'); }
 
   // ---------- Home rendering ----------
@@ -1880,32 +1874,6 @@
     return n + (s[(v-20)%10]||s[v]||s[0]);
   }
 
-  // ---------- Log ----------
-  function renderLog(){
-    const arr = load();
-    const grid = el('logGrid');
-    grid.innerHTML = '';
-    // last 28 days
-    const today = parseDay(dayStr(new Date()));
-    const sat = new Set(arr.map(s=>s.d));
-    for (let i=27;i>=0;i--){
-      const d = new Date(today); d.setDate(d.getDate()-i);
-      const ds = dayStr(d);
-      const c = document.createElement('div');
-      c.className = 'log-cell' + (sat.has(ds)?' lit':'') + (i===0?' today':'');
-      grid.appendChild(c);
-    }
-    const n = arr.length;
-    const days = new Set(arr.map(s=>s.d)).size;
-    const totalMin = arr.reduce((a,s)=>a+(s.m||0),0);
-    // current streak
-    let streak = 0; let cur = new Date(today);
-    while (sat.has(dayStr(cur))){ streak++; cur.setDate(cur.getDate()-1); }
-    el('logStats').innerHTML =
-      `<b>${n}</b> sittings · <b>${days}</b> days · <b>${totalMin}</b> minutes<br>` +
-      (streak>0?`current thread: <b>${streak}</b> ${streak===1?'day':'days'}`:`the cushion waits`);
-  }
-
   // ---------- Wiring ----------
   el('beginBtn').onclick = startPractice;
   el('pauseBtn').onclick = ()=>{
@@ -2011,7 +1979,6 @@
     applyDisplayVisibility();
     drawProgress(true);
   };
-  el('logLink').onclick = ()=>{ renderLog(); show('log'); };
   el('settingsLink').onclick = ()=>{ renderSettings(); show('settings'); };
   // The breathing practice (cardiac coherence) is its own page, sharing this
   // app's cache; it can also be installed on its own from that page.
@@ -2125,7 +2092,6 @@
       ed.appendChild(ta);
     }
   }
-  el('logReturn').onclick = ()=>{ renderHome(); show('home'); };
   el('closeReturn').onclick = ()=>{ exitFullscreen(); renderHome(); show('home'); };
 
   // init: paint immediately with empty caches, then re-render once the
