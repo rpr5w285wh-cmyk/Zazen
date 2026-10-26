@@ -78,6 +78,9 @@
   .card .name { font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 400; color: var(--ink); line-height: 1.2; grid-column: 1; }
   .card .benefit { color: var(--ember); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; margin-top: 3px; grid-column: 1 / -1; }
   .card .pattern { color: var(--ink-dim); font-size: 0.9rem; font-style: italic; margin-top: 5px; letter-spacing: 0.02em; grid-column: 1 / -1; }
+  .card .note, .d-note-line { color: var(--ink-faint); font-size: 0.85rem; font-style: italic; letter-spacing: 0.02em; }
+  .card .note { margin-top: 3px; grid-column: 1 / -1; }
+  .d-note-line { text-align: center; margin: -4px 0 10px; }
   .card .badge { grid-column: 2; grid-row: 1; align-self: start; }
   .badge { display: inline-block; color: var(--ink-faint); font-size: 0.62rem; letter-spacing: 0.16em; text-transform: uppercase; border: 1px solid var(--line); border-radius: 2px; padding: 4px 6px; white-space: nowrap; }
   .badge.studied { color: var(--ember); border-color: var(--ember-soft); }
@@ -167,6 +170,7 @@
     <div class="d-benefit" id="dBenefit"></div>
     <div class="d-secondary" id="dSecondary"></div>
     <div class="d-pattern" id="dPattern"></div>
+    <div class="d-note-line" id="dNote" hidden></div>
     <div class="d-badges" id="dBadges"></div>
     <div class="d-fields" id="dFields"></div>
     <div class="d-note">Not while driving or in water.</div>
@@ -214,7 +218,7 @@
 
   // Shares the service worker (and its version) with the sitting app. Keep in
   // step with index.html.
-  const APP_VERSION = '43';
+  const APP_VERSION = '44';
   const el = id => document.getElementById(id);
 
   try {
@@ -298,6 +302,7 @@
       caution:'' },
     // A preset by request, not a named technique: no evidence badge.
     { id:'68', name:'6-8', primary:'calm', secondary:['sleep'],
+      note:'(calms the "do something" impulse)',
       phases:[P('in',6), P('out',8)], len:{unit:'min', value:5}, evidence:'', type:'',
       origin:'A slow long-exhale preset: 6 in, 8 out, about 4.3 breaths a minute. It follows the same longer-exhale principle as 7-11, at a steadier count.',
       purpose:'Unhurried calming when a long exhale suits you better than a long hold.',
@@ -862,6 +867,7 @@
       ben.textContent = t.custom ? 'your own pattern' : benefitName(t.primary);
       const pat = document.createElement('div'); pat.className = 'pattern'; pat.textContent = patternText(t);
       c.appendChild(name); c.appendChild(ben); c.appendChild(pat);
+      if (t.note){ const nt = document.createElement('div'); nt.className = 'note'; nt.textContent = t.note; c.appendChild(nt); }
       if (t.evidence){ const bd = document.createElement('span'); bd.className = 'badge' + (t.evidence === 'Studied' ? ' studied' : ''); bd.textContent = t.evidence; c.appendChild(bd); }
       c.onclick = ()=> openDetail(t);
       cards.appendChild(c);
@@ -881,6 +887,7 @@
     el('dBenefit').textContent = t.custom ? 'your own pattern' : benefitName(t.primary);
     el('dSecondary').textContent = t.secondary.length ? 'also for: ' + t.secondary.map(benefitName).join(', ').toLowerCase() : '';
     el('dPattern').textContent = patternText(t);
+    el('dNote').textContent = t.note || ''; el('dNote').hidden = !t.note;
     const badges = el('dBadges'); badges.innerHTML = '';
     if (t.evidence){ const b = document.createElement('span'); b.className = 'badge' + (t.evidence === 'Studied' ? ' studied' : ''); b.textContent = t.evidence; badges.appendChild(b); }
     if (t.type === 'adapted'){ const b = document.createElement('span'); b.className = 'badge'; b.textContent = 'adapted'; badges.appendChild(b); }
