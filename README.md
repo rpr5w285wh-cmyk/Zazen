@@ -36,8 +36,9 @@ purpose, how-to and caution before Begin.
 
 Techniques: 4-7-8, 7-11, cyclic sighing, box breathing, coherent breathing,
 resonance (a 4.5 to 6.5 breaths-a-minute slider), Nadi Shodhana, triangle,
-plus the adapted patterns Soothe 4·8, Balance 5·5 and Beginner 3·5, the
-cardiac-coherence presets Calming 4·6 and Energizing 6·4, a training ramp,
+plus the adapted patterns Soothe 4·8, Balance 5·5 and Beginner 3·5, a 6·8
+long-exhale preset, the cardiac-coherence presets Calming 4·6 and
+Energizing 6·4, a training ramp,
 and a custom builder with all four phases (in, hold, out, hold) in half-second
 steps. Sessions run by minutes (1 to 20) or by breaths.
 

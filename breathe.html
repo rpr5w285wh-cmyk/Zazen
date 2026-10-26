@@ -214,7 +214,7 @@
 
   // Shares the service worker (and its version) with the sitting app. Keep in
   // step with index.html.
-  const APP_VERSION = '42';
+  const APP_VERSION = '43';
   const el = id => document.getElementById(id);
 
   try {
@@ -296,6 +296,13 @@
       purpose:'Settling quickly when 7-11 feels too long.',
       howto:'Inhale through the nose for 4, exhale slowly for 8.',
       caution:'' },
+    // A preset by request, not a named technique: no evidence badge.
+    { id:'68', name:'6-8', primary:'calm', secondary:['sleep'],
+      phases:[P('in',6), P('out',8)], len:{unit:'min', value:5}, evidence:'', type:'',
+      origin:'A slow long-exhale preset: 6 in, 8 out, about 4.3 breaths a minute. It follows the same longer-exhale principle as 7-11, at a steadier count.',
+      purpose:'Unhurried calming when a long exhale suits you better than a long hold.',
+      howto:'Inhale through the nose for 6, exhale slowly for 8, no holds.',
+      caution:'If 8 feels strained, use Soothe (4 in, 8 out) instead.' },
     { id:'balance', name:'Balance', primary:'resilience', secondary:['focus'],
       phases:[P('in',5), P('out',5)], len:{unit:'min', value:5}, evidence:'Studied', type:'adapted',
       origin:'Adapted from a reference app\'s cardiac-coherence session: 5 in, 5 out, six breaths a minute, the rate most HRV-biofeedback studies use.',
